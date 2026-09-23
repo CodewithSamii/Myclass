@@ -17,6 +17,7 @@ import '../features/section_admin/views/set_slots_page.dart';
 import '../features/section_admin/views/set_routine_page.dart';
 import '../features/section_admin/views/owner_approvals_page.dart';
 import '../core/models.dart';
+import '../core/repositories.dart';
 import '../core/format.dart';
 import '../core/clock.dart';
 import 'widgets/primitives.dart';
@@ -217,6 +218,60 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
                               ],
                             ),
                           ),
+                          if (isOwner)
+                            Container(
+                              margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: c.amberBg,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: c.amber.withValues(alpha: 0.25)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(CupertinoIcons.shield_fill, color: c.amber, size: 16),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      '${membership.universityName} · ${membership.programName} · ${membership.batchName} · ${membership.sectionName}',
+                                      style: context.type.bodySmall?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                        color: c.ink,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  InkWell(
+                                    onTap: () => _showOwnerSectionSwitcher(context),
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: c.amber,
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(CupertinoIcons.arrow_2_squarepath, size: 12, color: Colors.white),
+                                          SizedBox(width: 4),
+                                          Text(
+                                            'Switch',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           Expanded(
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -440,6 +495,15 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
                         openPage(context, const OwnerApprovalsPage());
                       },
                     ),
+                    ListTile(
+                      leading: Icon(CupertinoIcons.arrow_2_squarepath, size: 20, color: c.amber),
+                      title: const Text('Switch Section / Classroom'),
+                      subtitle: const Text('Navigate across universities & batches'),
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        _showOwnerSectionSwitcher(context);
+                      },
+                    ),
                   ],
                 ],
               ),
@@ -609,6 +673,442 @@ class _ContextRail extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+void _showOwnerSectionSwitcher(BuildContext context) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    builder: (_) => const OwnerSectionSwitcherSheet(),
+  );
+}
+
+class OwnerSectionSwitcherSheet extends StatefulWidget {
+  const OwnerSectionSwitcherSheet({super.key});
+
+  @override
+  State<OwnerSectionSwitcherSheet> createState() => _OwnerSectionSwitcherSheetState();
+}
+
+class _OwnerSectionSwitcherSheetState extends State<OwnerSectionSwitcherSheet> {
+  List<University> universities = [];
+  University? selectedUniversity;
+
+  List<Department> departments = [];
+  Department? selectedDept;
+
+  List<Batch> batches = [];
+  Batch? selectedBatch;
+
+  List<Section> sections = [];
+  Section? selectedSection;
+
+  bool loading = true;
+  String? error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInitial();
+  }
+
+  Future<void> _loadInitial() async {
+    setState(() => loading = true);
+    try {
+      final repo = context.read<AcademicStructureRepository>();
+      final uList = await repo.universities();
+      if (!mounted) return;
+      final currentProfile = context.read<ProfileBloc>().state.profile;
+      final currentMem = currentProfile.membership;
+
+      final defaultUni = uList.firstWhere(
+        (u) => u.id == currentMem.universityId,
+        orElse: () => uList.isNotEmpty ? uList.first : const University('lu', 'Leading University', 'Asia/Dhaka'),
+      );
+
+      final dList = await repo.departments('Undergraduate', universityId: defaultUni.id);
+      final defaultDept = dList.firstWhere(
+        (d) => d.id == currentMem.departmentId,
+        orElse: () => dList.isNotEmpty ? dList.first : const Department('cse', 'Computer Science & Engineering', 'CSE'),
+      );
+
+      final progs = await repo.programs(defaultDept.id, 'Undergraduate', universityId: defaultUni.id);
+      final prog = progs.isNotEmpty
+          ? progs.first
+          : AcademicProgram(
+              id: 'prog-${defaultDept.id}',
+              name: defaultDept.name,
+              shortName: defaultDept.shortName,
+              departmentId: defaultDept.id,
+              type: 'Undergraduate',
+              universityId: defaultUni.id,
+            );
+
+      final bList = await repo.batches(prog.id);
+      final defaultBatch = bList.firstWhere(
+        (b) => b.id == currentMem.batchId,
+        orElse: () => bList.isNotEmpty ? bList.first : const Batch('b64', 'prog-cse', 'Batch 64'),
+      );
+
+      final sList = await repo.sections(defaultBatch.id);
+      final defaultSec = sList.firstWhere(
+        (s) => s.id == currentMem.sectionId,
+        orElse: () => sList.isNotEmpty ? sList.first : const Section('s-b', 'b64', 'Section B'),
+      );
+
+      if (mounted) {
+        setState(() {
+          universities = uList;
+          selectedUniversity = defaultUni;
+          departments = dList;
+          selectedDept = defaultDept;
+          batches = bList;
+          selectedBatch = defaultBatch;
+          sections = sList;
+          selectedSection = defaultSec;
+          loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          error = e.toString();
+          loading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _onUniversityChanged(University u) async {
+    setState(() {
+      selectedUniversity = u;
+      loading = true;
+      departments = [];
+      selectedDept = null;
+      batches = [];
+      selectedBatch = null;
+      sections = [];
+      selectedSection = null;
+    });
+    try {
+      final repo = context.read<AcademicStructureRepository>();
+      final dList = await repo.departments('Undergraduate', universityId: u.id);
+      Department? firstDept = dList.isNotEmpty ? dList.first : null;
+
+      List<Batch> bList = [];
+      Batch? firstBatch;
+      List<Section> sList = [];
+      Section? firstSec;
+
+      if (firstDept != null) {
+        final progs = await repo.programs(firstDept.id, 'Undergraduate', universityId: u.id);
+        final progId = progs.isNotEmpty ? progs.first.id : 'prog-${firstDept.id}';
+        bList = await repo.batches(progId);
+        firstBatch = bList.isNotEmpty ? bList.first : null;
+
+        if (firstBatch != null) {
+          sList = await repo.sections(firstBatch.id);
+          firstSec = sList.isNotEmpty ? sList.first : null;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          departments = dList;
+          selectedDept = firstDept;
+          batches = bList;
+          selectedBatch = firstBatch;
+          sections = sList;
+          selectedSection = firstSec;
+          loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() { error = e.toString(); loading = false; });
+    }
+  }
+
+  Future<void> _onDeptChanged(Department d) async {
+    setState(() {
+      selectedDept = d;
+      loading = true;
+      batches = [];
+      selectedBatch = null;
+      sections = [];
+      selectedSection = null;
+    });
+    try {
+      final repo = context.read<AcademicStructureRepository>();
+      final progs = await repo.programs(d.id, 'Undergraduate', universityId: selectedUniversity?.id);
+      final progId = progs.isNotEmpty ? progs.first.id : 'prog-${d.id}';
+      final bList = await repo.batches(progId);
+      final firstBatch = bList.isNotEmpty ? bList.first : null;
+
+      List<Section> sList = [];
+      Section? firstSec;
+      if (firstBatch != null) {
+        sList = await repo.sections(firstBatch.id);
+        firstSec = sList.isNotEmpty ? sList.first : null;
+      }
+
+      if (mounted) {
+        setState(() {
+          batches = bList;
+          selectedBatch = firstBatch;
+          sections = sList;
+          selectedSection = firstSec;
+          loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() { error = e.toString(); loading = false; });
+    }
+  }
+
+  Future<void> _onBatchChanged(Batch b) async {
+    setState(() {
+      selectedBatch = b;
+      loading = true;
+      sections = [];
+      selectedSection = null;
+    });
+    try {
+      final repo = context.read<AcademicStructureRepository>();
+      final sList = await repo.sections(b.id);
+      final firstSec = sList.isNotEmpty ? sList.first : null;
+
+      if (mounted) {
+        setState(() {
+          sections = sList;
+          selectedSection = firstSec;
+          loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() { error = e.toString(); loading = false; });
+    }
+  }
+
+  void _applySwitch() {
+    if (selectedSection == null || selectedBatch == null || selectedDept == null) return;
+
+    final membership = SectionMembership(
+      sectionId: selectedSection!.id,
+      departmentId: selectedDept!.id,
+      programId: selectedBatch!.programId,
+      batchId: selectedBatch!.id,
+      programName: selectedDept!.name,
+      batchName: selectedBatch!.label,
+      sectionName: selectedSection!.label,
+      universityId: selectedUniversity?.id ?? 'lu',
+      universityName: selectedUniversity?.name ?? 'Leading University',
+      role: UserRole.myClassOwner,
+    );
+
+    context.read<AuthBloc>().add(
+      AuthSectionLoggedIn(
+        name: 'MyClass Owner',
+        membership: membership,
+        grant: SectionGrant(selectedSection!.id, 'owner-token', role: UserRole.myClassOwner),
+      ),
+    );
+
+    Navigator.of(context).pop();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Switched to ${selectedDept!.name} · ${selectedBatch!.label} · ${selectedSection!.label}'),
+        backgroundColor: context.colors.sage,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        24,
+        8,
+        24,
+        MediaQuery.viewInsetsOf(context).bottom + 28,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(CupertinoIcons.shield_fill, color: c.amber, size: 22),
+                const SizedBox(width: 8),
+                Text('Owner Mode — Switch Section', style: context.type.headlineSmall),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Navigate and manage any university, department, batch, and section.',
+              style: context.type.bodySmall?.copyWith(color: c.secondary),
+            ),
+            const SizedBox(height: 20),
+
+            if (loading)
+              const Center(child: Padding(padding: EdgeInsets.all(24), child: CupertinoActivityIndicator()))
+            else ...[
+              if (error != null) ...[
+                ErrorNotice(error!),
+                const SizedBox(height: 12),
+              ],
+
+              // 1. University
+              Label('University', color: c.secondary),
+              const SizedBox(height: 6),
+              DropdownButtonFormField<University>(
+                value: selectedUniversity,
+                isExpanded: true,
+                items: universities
+                    .map(
+                      (u) => DropdownMenuItem(
+                        value: u,
+                        child: Text(u.name, overflow: TextOverflow.ellipsis),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (u) {
+                  if (u != null) _onUniversityChanged(u);
+                },
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(CupertinoIcons.building_2_fill, size: 18),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // 2. Department
+              Label('Department', color: c.secondary),
+              const SizedBox(height: 6),
+              DropdownButtonFormField<Department>(
+                value: selectedDept,
+                isExpanded: true,
+                items: departments
+                    .map(
+                      (d) => DropdownMenuItem(
+                        value: d,
+                        child: Text(d.name, overflow: TextOverflow.ellipsis),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (d) {
+                  if (d != null) _onDeptChanged(d);
+                },
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(CupertinoIcons.folder, size: 18),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // 3. Batch
+              Label('Batch', color: c.secondary),
+              const SizedBox(height: 8),
+              if (batches.isEmpty)
+                Text('No batches available', style: TextStyle(color: c.secondary, fontSize: 12))
+              else
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: batches
+                      .map(
+                        (b) => ChoiceChip(
+                          label: Text(b.label),
+                          selected: selectedBatch?.id == b.id,
+                          onSelected: (_) => _onBatchChanged(b),
+                          selectedColor: c.amber,
+                          labelStyle: TextStyle(
+                            fontSize: 12,
+                            fontWeight: selectedBatch?.id == b.id ? FontWeight.bold : FontWeight.normal,
+                            color: selectedBatch?.id == b.id ? Colors.white : c.ink,
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+              const SizedBox(height: 16),
+
+              // 4. Section
+              Label('Section', color: c.secondary),
+              const SizedBox(height: 8),
+              if (sections.isEmpty)
+                Text('No sections available', style: TextStyle(color: c.secondary, fontSize: 12))
+              else
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: sections
+                      .map(
+                        (s) => ChoiceChip(
+                          label: Text(s.label),
+                          selected: selectedSection?.id == s.id,
+                          onSelected: (_) => setState(() => selectedSection = s),
+                          selectedColor: c.amber,
+                          labelStyle: TextStyle(
+                            fontSize: 12,
+                            fontWeight: selectedSection?.id == s.id ? FontWeight.bold : FontWeight.normal,
+                            color: selectedSection?.id == s.id ? Colors.white : c.ink,
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+              const SizedBox(height: 20),
+
+              // Current Selection Box
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: c.subtle,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: c.line),
+                ),
+                child: Row(
+                  children: [
+                    Icon(CupertinoIcons.info_circle, size: 18, color: c.secondary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Target: ${selectedUniversity?.name ?? "-"} ➔ ${selectedDept?.name ?? "-"} ➔ ${selectedBatch?.label ?? "-"} ➔ ${selectedSection?.label ?? "-"}',
+                        style: context.type.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: c.ink,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 22),
+
+              FilledButton(
+                onPressed: selectedSection != null ? _applySwitch : null,
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(50),
+                  backgroundColor: c.amber,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(CupertinoIcons.checkmark_shield, size: 18),
+                    SizedBox(width: 8),
+                    Text('Manage Selected Section', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

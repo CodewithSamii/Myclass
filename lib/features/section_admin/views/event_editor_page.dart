@@ -16,13 +16,15 @@ import '../../profile/bloc/profile_bloc.dart';
 import '../bloc/event_editor_bloc.dart';
 
 class EventEditorPage extends StatelessWidget {
-  const EventEditorPage({super.key, this.event, this.postpone = false});
+  const EventEditorPage({super.key, this.event, this.postpone = false, this.initialDate});
   final AcademicEvent? event;
   final bool postpone;
+  final DateTime? initialDate;
   @override
   Widget build(BuildContext context) {
     final p = context.read<ProfileBloc>().state.profile;
     final now = context.read<ClockCubit>().state;
+    final targetDate = initialDate ?? dateOnly(now.add(const Duration(days: 1)));
     final cs = context.read<ScheduleBloc>().state.courses;
     if (!p.membership.canManage) {
       return const DetailPage(
@@ -49,8 +51,8 @@ class EventEditorPage extends StatelessWidget {
               title: '',
               type: AcademicEventType.assignment,
               courseId: cs.firstOrNull?.id ?? '',
-              date: dateOnly(now.add(const Duration(days: 1))),
-              deadline: DateTime(now.year, now.month, now.day + 1, 23, 59),
+              date: targetDate,
+              deadline: DateTime(targetDate.year, targetDate.month, targetDate.day, 23, 59),
               sectionId: p.activeSectionId,
               createdAt: now,
               updatedAt: now,
@@ -488,35 +490,151 @@ class _EditorContent extends StatelessWidget {
   }
 
   Future<void> _attach(BuildContext context, EventEditorBloc b) async {
-    final kind = await selectOption<AttachmentKind>(
+    final attachment = await openSheet<Attachment>(
       context,
-      title: 'Add a sample attachment',
-      options: Future.value(AttachmentKind.values),
-      label: (v) => switch (v) {
-        AttachmentKind.pdf => 'PDF · Assignment Brief.pdf',
-        AttachmentKind.document => 'Document · Instructions.docx',
-        AttachmentKind.image => 'Image · Reference diagram.png',
-        AttachmentKind.file => 'File · Resources.zip',
-      },
+      const _AttachmentCreatorSheet(),
     );
-    if (kind == null || b.isClosed) return;
-    final name = switch (kind) {
-      AttachmentKind.pdf => 'Assignment Brief.pdf',
-      AttachmentKind.document => 'Instructions.docx',
-      AttachmentKind.image => 'Reference diagram.png',
-      AttachmentKind.file => 'Resources.zip',
-    };
-    b.add(
-      EditorChanged(
-        EditorField.attachment,
-        Attachment(
-          id: 'attachment-${DateTime.now().microsecondsSinceEpoch}',
-          name: name,
-          kind: kind,
-          sizeLabel: '124 KB',
-          preview:
-              'SAMPLE ATTACHMENT\n\n$name\n\nThis local sample demonstrates the attachment experience. Connect an upload provider later to store and open real files.',
-        ),
+    if (attachment != null && !b.isClosed) {
+      b.add(EditorChanged(EditorField.attachment, attachment));
+    }
+  }
+}
+
+class _AttachmentCreatorSheet extends StatefulWidget {
+  const _AttachmentCreatorSheet();
+  @override
+  State<_AttachmentCreatorSheet> createState() => _AttachmentCreatorSheetState();
+}
+
+class _AttachmentCreatorSheetState extends State<_AttachmentCreatorSheet> {
+  AttachmentKind kind = AttachmentKind.pdf;
+  final TextEditingController nameController = TextEditingController(text: 'Assignment Brief.pdf');
+  String sizeLabel = '1.4 MB';
+
+  void _selectKind(AttachmentKind k, String defaultName) {
+    setState(() {
+      kind = k;
+      nameController.text = defaultName;
+      sizeLabel = switch (k) {
+        AttachmentKind.pdf => '1.4 MB',
+        AttachmentKind.image => '850 KB',
+        AttachmentKind.document => '320 KB',
+        AttachmentKind.file => '3.8 MB',
+      };
+    });
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Attach File to Event', style: context.type.headlineSmall),
+          const SizedBox(height: 6),
+          Text(
+            'Support JPG, JPEG, PNG, PDF, Word documents, and archives.',
+            style: context.type.bodySmall?.copyWith(color: c.secondary),
+          ),
+          const SizedBox(height: 18),
+          Label('File Format', color: c.secondary),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _formatChip(
+                label: 'PDF Document (.pdf)',
+                icon: CupertinoIcons.doc_text,
+                selected: kind == AttachmentKind.pdf,
+                onTap: () => _selectKind(AttachmentKind.pdf, 'Assignment Brief.pdf'),
+              ),
+              _formatChip(
+                label: 'PNG Image (.png)',
+                icon: CupertinoIcons.photo,
+                selected: kind == AttachmentKind.image && nameController.text.endsWith('.png'),
+                onTap: () => _selectKind(AttachmentKind.image, 'Reference Diagram.png'),
+              ),
+              _formatChip(
+                label: 'JPG Image (.jpg)',
+                icon: CupertinoIcons.photo,
+                selected: kind == AttachmentKind.image && (nameController.text.endsWith('.jpg') || nameController.text.endsWith('.jpeg')),
+                onTap: () => _selectKind(AttachmentKind.image, 'Class Board Notes.jpg'),
+              ),
+              _formatChip(
+                label: 'Document (.docx)',
+                icon: CupertinoIcons.doc,
+                selected: kind == AttachmentKind.document,
+                onTap: () => _selectKind(AttachmentKind.document, 'Project Guidelines.docx'),
+              ),
+              _formatChip(
+                label: 'Archive / Zip (.zip)',
+                icon: CupertinoIcons.archivebox,
+                selected: kind == AttachmentKind.file,
+                onTap: () => _selectKind(AttachmentKind.file, 'Lab Resources.zip'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Label('File Name', color: c.secondary),
+          const SizedBox(height: 6),
+          TextField(
+            controller: nameController,
+            decoration: const InputDecoration(
+              hintText: 'Enter file name (e.g. Syllabus.pdf)',
+              prefixIcon: Icon(CupertinoIcons.paperclip, size: 18),
+            ),
+          ),
+          const SizedBox(height: 24),
+          PrimaryButton(
+            'Attach File',
+            icon: CupertinoIcons.checkmark,
+            onPressed: () {
+              final raw = nameController.text.trim();
+              if (raw.isEmpty) return;
+              Navigator.of(context).pop(
+                Attachment(
+                  id: 'attachment-${DateTime.now().microsecondsSinceEpoch}',
+                  name: raw,
+                  kind: kind,
+                  sizeLabel: sizeLabel,
+                  preview:
+                      'ATTACHMENT: $raw\n\nKind: ${kind.name.toUpperCase()} · Size: $sizeLabel\n\nThis file is attached to this academic event for your classroom section.',
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _formatChip({
+    required String label,
+    required IconData icon,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    final c = context.colors;
+    return ChoiceChip(
+      avatar: Icon(icon, size: 15, color: selected ? c.canvas : c.ink),
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => onTap(),
+      selectedColor: c.ink,
+      labelStyle: TextStyle(
+        fontSize: 12,
+        fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+        color: selected ? c.canvas : c.ink,
       ),
     );
   }

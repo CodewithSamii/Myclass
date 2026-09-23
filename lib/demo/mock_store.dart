@@ -18,11 +18,14 @@ class MockStore {
   final changes = StreamController<void>.broadcast();
   void notify() => changes.add(null);
   List<AcademicEvent> eventsFor(String section) =>
-      events.putIfAbsent(section, () => Fixtures.events(section));
+      events.putIfAbsent(section, () => _isPrePopulated(section) ? Fixtures.events(section) : []);
   List<ClassSession> routineFor(String section) =>
-      routines.putIfAbsent(section, () => Fixtures.routine(section));
+      routines.putIfAbsent(section, () => _isPrePopulated(section) ? Fixtures.routine(section) : []);
   List<TimeSlot> timeSlotsFor(String section) =>
-      timeSlots.putIfAbsent(section, () => List.from(Fixtures.defaultTimeSlots));
+      timeSlots.putIfAbsent(section, () => _isPrePopulated(section) ? List.from(Fixtures.defaultTimeSlots) : []);
+
+  bool _isPrePopulated(String section) =>
+      section == 'bsc-cse-64-I' || section == 'bsc-cse-64-B';
 
   Future<void> delay() =>
       Future<void>.delayed(const Duration(milliseconds: 260));

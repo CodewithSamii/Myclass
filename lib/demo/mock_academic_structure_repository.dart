@@ -142,7 +142,7 @@ class MockAcademicStructureRepository implements AcademicStructureRepository {
   Future<List<Batch>> batches(String programId) async {
     await _delay();
     return [
-      for (final n in [64, 63, 62, 61, 60, 59, 58])
+      for (final n in [69, 68, 67, 66, 65, 64, 63, 62, 61])
         Batch('$programId-$n', programId, 'Batch $n'),
     ];
   }

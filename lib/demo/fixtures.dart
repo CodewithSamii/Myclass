@@ -390,13 +390,13 @@ abstract final class Fixtures {
     BusRoute(
       id: 'r1',
       number: 1,
-      name: 'Amberkhana',
+      name: 'Tilaghor',
       durationMinutes: 40,
       stops: [
-        BusStop('Amberkhana', 0),
+        BusStop('Tilaghor', 0),
         BusStop('Chowhatta', 8),
         BusStop('Zindabazar', 14),
-        BusStop('Tilagor', 27),
+        BusStop('Amberkhana', 27),
         BusStop('Campus', 40),
       ],
       departures: [
@@ -411,10 +411,10 @@ abstract final class Fixtures {
     BusRoute(
       id: 'r2',
       number: 2,
-      name: 'Subidbazar',
+      name: 'Shurma Market',
       durationMinutes: 45,
       stops: [
-        BusStop('Subidbazar', 0),
+        BusStop('Shurma Market', 0),
         BusStop('Pathantula', 8),
         BusStop('Mira Bazar', 22),
         BusStop('Shibganj', 30),
@@ -431,10 +431,10 @@ abstract final class Fixtures {
     BusRoute(
       id: 'r3',
       number: 3,
-      name: 'South Surma',
+      name: 'Khasdobir',
       durationMinutes: 55,
       stops: [
-        BusStop('South Surma', 0),
+        BusStop('Khasdobir', 0),
         BusStop('Kadamtali', 12),
         BusStop('Bandar Bazar', 24),
         BusStop('Tilagor', 40),
@@ -450,10 +450,10 @@ abstract final class Fixtures {
     BusRoute(
       id: 'r4',
       number: 4,
-      name: 'Shahporan',
+      name: 'Tilaghor',
       durationMinutes: 25,
       stops: [
-        BusStop('Shahporan Gate', 0),
+        BusStop('Tilaghor', 0),
         BusStop('Major Tila', 7),
         BusStop('Bateshwar', 17),
         BusStop('Campus', 25),
@@ -867,7 +867,7 @@ abstract final class Fixtures {
       ),
       e(
         'db-assignment',
-        'Database Assignment 3 Due',
+        'Database Assignment 3',
         AcademicEventType.assignment,
         25,
         23,

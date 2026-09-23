@@ -19,6 +19,7 @@ import '../../search/views/search_page.dart';
 import '../../notes/bloc/notes_bloc.dart';
 import '../../notes/views/notes_page.dart';
 import '../../notes/views/note_editor.dart';
+import '../../section_admin/views/event_editor_page.dart';
 import '../../section_admin/views/set_slots_page.dart';
 import '../../section_admin/views/set_routine_page.dart';
 import '../models/agenda_projection.dart';
@@ -385,62 +386,82 @@ class HomePage extends StatelessWidget {
                   sameDay(ss.selected, ss.now) ? 'Today' : Fmt.fullDate(ss.selected),
                   style: context.type.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                 ),
-                TextButton(
-                  onPressed: () => context
-                      .read<ScheduleBloc>()
-                      .add(ScheduleDateSelected(dateOnly(ss.now))),
-                  child: const Text('Jump to Today'),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (profile.membership.canManage || profile.membership.isOwner)
+                      TextButton.icon(
+                        onPressed: () => openPage(
+                          context,
+                          EventEditorPage(initialDate: ss.selected),
+                        ),
+                        icon: const Icon(CupertinoIcons.plus_circle, size: 15),
+                        label: const Text('Add Event'),
+                        style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                        ),
+                      ),
+                    TextButton(
+                      onPressed: () => context
+                          .read<ScheduleBloc>()
+                          .add(ScheduleDateSelected(dateOnly(ss.now))),
+                      child: const Text('Jump to Today'),
+                    ),
+                  ],
                 ),
               ],
             ),
 
             if (dueOnSelected.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Surface(
-                onTap: () => openPage(
-                  context,
-                  EventDetailPage(id: dueOnSelected.first.id),
-                ),
-                padding: const EdgeInsets.all(12),
-                color: context.colors.amberBg,
-                border: false,
-                child: Row(
-                  children: [
-                    Icon(
-                      CupertinoIcons.doc_text,
-                      size: 18,
-                      color: context.colors.amber,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            dueOnSelected.first.title,
-                            style: context.type.titleSmall?.copyWith(
-                              color: context.colors.amber,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Due ${sameDay(dueOnSelected.first.effectiveAt, ss.now) ? "Today" : Fmt.date(dueOnSelected.first.effectiveAt)}, ${Fmt.time(dueOnSelected.first.effectiveAt)}${dueOnSelected.length > 1 ? " · +${dueOnSelected.length - 1} more event${dueOnSelected.length > 2 ? 's' : ''}" : ""}',
-                            style: context.type.bodySmall?.copyWith(
-                              color: context.colors.amber,
-                            ),
-                          ),
-                        ],
+              for (final ev in dueOnSelected.take(5)) ...[
+                const SizedBox(height: 8),
+                Surface(
+                  onTap: () => openPage(
+                    context,
+                    EventDetailPage(id: ev.id),
+                  ),
+                  padding: const EdgeInsets.all(12),
+                  color: context.colors.amberBg,
+                  border: false,
+                  child: Row(
+                    children: [
+                      Icon(
+                        CupertinoIcons.doc_text,
+                        size: 18,
+                        color: context.colors.amber,
                       ),
-                    ),
-                    Icon(
-                      CupertinoIcons.chevron_right,
-                      size: 14,
-                      color: context.colors.amber,
-                    ),
-                  ],
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              ev.title,
+                              style: context.type.titleSmall?.copyWith(
+                                color: context.colors.amber,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${sameDay(ev.effectiveAt, ss.now) ? "Today" : Fmt.date(ev.effectiveAt)}, ${Fmt.time(ev.effectiveAt)}${ev.location != null && ev.location!.isNotEmpty ? " · ${ev.location}" : ""}',
+                              style: context.type.bodySmall?.copyWith(
+                                color: context.colors.amber,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        CupertinoIcons.chevron_right,
+                        size: 14,
+                        color: context.colors.amber,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+              ],
             ],
 
             if (conflicts.isNotEmpty) ...[
@@ -482,6 +503,7 @@ class HomePage extends StatelessWidget {
               entries: selectedEntries,
               timeSlots: ss.timeSlots,
               now: ss.now,
+              canManage: profile.membership.canManage || profile.membership.isOwner,
               onTapEntry: (entry) {
                 if (entry.event != null) {
                   openPage(context, EventDetailPage(id: entry.event!.id));
@@ -808,8 +830,9 @@ class _ChocolateBlockDateBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final startDay = dateOnly(now).subtract(const Duration(days: 3));
-    final days = List.generate(18, (i) => startDay.add(Duration(days: i)));
+    // 60-day horizontal date timeline covering ~2 full months
+    final startDay = dateOnly(now).subtract(const Duration(days: 14));
+    final days = List.generate(60, (i) => startDay.add(Duration(days: i)));
 
     return SizedBox(
       height: 74,
@@ -913,18 +936,71 @@ class _TwoColumnScheduleTable extends StatelessWidget {
     required this.timeSlots,
     required this.now,
     required this.onTapEntry,
+    this.canManage = false,
   });
 
   final List<AgendaEntry> entries;
   final List<TimeSlot> timeSlots;
   final DateTime now;
   final ValueChanged<AgendaEntry> onTapEntry;
+  final bool canManage;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
 
     if (entries.isEmpty) {
+      if (canManage) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: c.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: c.line),
+          ),
+          child: Column(
+            children: [
+              Icon(CupertinoIcons.square_stack_3d_up, size: 36, color: c.sage),
+              const SizedBox(height: 10),
+              Text(
+                'Classroom Setup Needed',
+                style: context.type.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'This classroom is empty. Use the management shortcuts below to build time periods, weekly routine, or add events.',
+                textAlign: TextAlign.center,
+                style: context.type.bodySmall?.copyWith(color: c.secondary),
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
+                children: [
+                  FilledButton.tonalIcon(
+                    onPressed: () => openPage(context, const SetSlotsPage()),
+                    icon: const Icon(CupertinoIcons.clock, size: 16),
+                    label: const Text('Set Slots', style: TextStyle(fontSize: 12)),
+                  ),
+                  FilledButton.tonalIcon(
+                    onPressed: () => openPage(context, const SetRoutinePage()),
+                    icon: const Icon(CupertinoIcons.calendar, size: 16),
+                    label: const Text('Set Routine', style: TextStyle(fontSize: 12)),
+                  ),
+                  FilledButton.tonalIcon(
+                    onPressed: () => openPage(context, const EventEditorPage()),
+                    icon: const Icon(CupertinoIcons.plus, size: 16),
+                    label: const Text('Add Event', style: TextStyle(fontSize: 12)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      }
+
       return Container(
         padding: const EdgeInsets.all(36),
         alignment: Alignment.center,
@@ -943,7 +1019,7 @@ class _TwoColumnScheduleTable extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              'Enjoy your free time or prepare ahead for upcoming exams.',
+              'Your class routine will appear here once configured by your section admin.',
               textAlign: TextAlign.center,
               style: context.type.bodySmall?.copyWith(color: c.secondary),
             ),
