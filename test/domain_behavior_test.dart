@@ -353,4 +353,37 @@ void main() {
   test('week starts on Sunday and preserves month boundaries', () {
     expect(weekStart(DateTime(2026, 10, 1)), DateTime(2026, 9, 27));
   });
+
+  test('universities list is populated and sorted A to Z', () async {
+    final repo = MockAcademicStructureRepository();
+    final unis = await repo.universities();
+    expect(unis.length, greaterThanOrEqualTo(100));
+
+    // Verify sorted A-Z
+    for (int i = 0; i < unis.length - 1; i++) {
+      final current = unis[i].name;
+      final next = unis[i + 1].name;
+      expect(current.compareTo(next), lessThanOrEqualTo(0),
+          reason: '$current should come before $next');
+    }
+
+    // Verify contains Leading University and other prominent Bangladesh universities
+    expect(unis.any((u) => u.name == 'Leading University'), isTrue);
+    expect(unis.any((u) => u.name == 'Ahsanullah University of Science and Technology'), isTrue);
+    expect(unis.any((u) => u.name == 'University of Dhaka'), isTrue);
+  });
+
+  test('academic data is scoped to university and does not leak to other universities', () async {
+    final repo = MockAcademicStructureRepository();
+    
+    // Leading University has pre-configured departments
+    final luDepts = await repo.departments('Undergraduate', universityId: 'lu');
+    expect(luDepts, isNotEmpty);
+    expect(luDepts.any((d) => d.id == 'cse'), isTrue);
+
+    // Other university has no pre-configured departments unless created
+    final duDepts = await repo.departments('Undergraduate', universityId: 'univ-dhaka');
+    expect(duDepts, isEmpty);
+  });
 }
+

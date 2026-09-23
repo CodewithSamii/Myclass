@@ -1,13 +1,16 @@
 import '../../../core/models.dart';
 
 abstract interface class AcademicStructureRepository {
-  Future<List<Department>> departments(String programType);
-  Future<List<AcademicProgram>> programs(String departmentId, String type);
+  Future<List<University>> universities();
+  Future<List<Department>> departments(String programType, {String? universityId});
+  Future<List<AcademicProgram>> programs(String departmentId, String type, {String? universityId});
   Future<List<Batch>> batches(String programId);
   Future<List<Section>> sections(String batchId);
   Future<List<Section>> approvedSections(String batchId);
   Future<List<Section>> pendingSections();
   Future<Section> createSection({
+    String? universityId,
+    String? universityName,
     required String departmentId,
     required String departmentName,
     required String batchId,

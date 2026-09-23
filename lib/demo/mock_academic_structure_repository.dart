@@ -83,26 +83,59 @@ class MockAcademicStructureRepository implements AcademicStructureRepository {
   };
 
   @override
-  Future<List<Department>> departments(String programType) async {
+  Future<List<University>> universities() async {
     await _delay();
-    return Fixtures.departments
-        .where(
-          (d) => Fixtures.programs.any(
-            (p) => p.departmentId == d.id && p.type == programType,
-          ),
-        )
+    final list = List<University>.from(Fixtures.universities)
+      ..sort((a, b) => a.name.compareTo(b.name));
+    return list;
+  }
+
+  @override
+  Future<List<Department>> departments(String programType, {String? universityId}) async {
+    await _delay();
+    final uId = (universityId == null || universityId.isEmpty) ? 'lu' : universityId;
+    // Leading University data
+    if (uId == 'lu' || uId == 'leading-university' || uId == 'mu') {
+      return Fixtures.departments
+          .where(
+            (d) => Fixtures.programs.any(
+              (p) => p.departmentId == d.id && p.type == programType,
+            ),
+          )
+          .toList();
+    }
+    // Dynamic departments created for other universities
+    final created = _sectionStore.values
+        .where((s) => (s.universityId == uId) && s.departmentId != null)
+        .map((s) => Department(s.departmentId!, s.departmentName ?? s.departmentId!, s.departmentName ?? s.departmentId!))
+        .toSet()
         .toList();
+    return created;
   }
 
   @override
   Future<List<AcademicProgram>> programs(
     String departmentId,
-    String type,
-  ) async {
+    String type, {
+    String? universityId,
+  }) async {
     await _delay();
-    return Fixtures.programs
-        .where((p) => p.departmentId == departmentId && p.type == type)
-        .toList();
+    final uId = (universityId == null || universityId.isEmpty) ? 'lu' : universityId;
+    if (uId == 'lu' || uId == 'leading-university' || uId == 'mu') {
+      return Fixtures.programs
+          .where((p) => p.departmentId == departmentId && p.type == type)
+          .toList();
+    }
+    return [
+      AcademicProgram(
+        id: 'prog-$departmentId',
+        name: departmentId,
+        shortName: departmentId,
+        departmentId: departmentId,
+        type: type,
+        universityId: uId,
+      ),
+    ];
   }
 
   @override
@@ -149,6 +182,8 @@ class MockAcademicStructureRepository implements AcademicStructureRepository {
 
   @override
   Future<Section> createSection({
+    String? universityId,
+    String? universityName,
     required String departmentId,
     required String departmentName,
     required String batchId,
@@ -175,6 +210,8 @@ class MockAcademicStructureRepository implements AcademicStructureRepository {
       departmentId: departmentId,
       departmentName: departmentName,
       batchName: batchName,
+      universityId: universityId ?? 'lu',
+      universityName: universityName ?? 'Leading University',
     );
 
     _sectionStore[id] = section;

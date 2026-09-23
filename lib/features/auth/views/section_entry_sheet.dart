@@ -17,6 +17,11 @@ class SectionEntrySheet extends StatefulWidget {
 class _SectionEntrySheetState extends State<SectionEntrySheet> {
   int tabIndex = 0; // 0: Join Classroom, 1: Create Classroom, 2: Owner Login
 
+  // University state
+  List<University> universities = [];
+  University? selectedUniversity;
+  University? createUniversity;
+
   // Join flow state
   Department? selectedDept;
   Batch? selectedBatch;
@@ -28,6 +33,7 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
 
   // Create flow state
   Department? createDept;
+  final TextEditingController createDeptNameController = TextEditingController(text: 'Computer Science & Engineering');
   final TextEditingController createBatchController = TextEditingController(text: '64');
   final TextEditingController createSectionController = TextEditingController(text: 'Section D');
   final TextEditingController createCreatorNameController = TextEditingController(text: 'Class Rep');
@@ -40,6 +46,7 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
   final TextEditingController ownerPassController = TextEditingController();
 
   List<Department> departments = [];
+  List<Department> createDepartments = [];
   List<Batch> batches = [];
   List<Section> sections = [];
   bool loadingData = false;
@@ -56,6 +63,7 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
   void dispose() {
     joinNameController.dispose();
     joinPasswordController.dispose();
+    createDeptNameController.dispose();
     createBatchController.dispose();
     createSectionController.dispose();
     createCreatorNameController.dispose();
@@ -69,39 +77,132 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
     setState(() => loadingData = true);
     try {
       final repo = context.read<AcademicStructureRepository>();
-      final depts = await repo.departments('Undergraduate');
+      final uList = await repo.universities();
+
+      // Find Leading University as default, or fallback to first
+      final defaultUni = uList.firstWhere(
+        (u) => u.name == 'Leading University' || u.id == 'lu',
+        orElse: () => uList.isNotEmpty ? uList.first : const University('lu', 'Leading University', 'Asia/Dhaka'),
+      );
+
+      final depts = await repo.departments('Undergraduate', universityId: defaultUni.id);
+
       setState(() {
+        universities = uList;
+        selectedUniversity = defaultUni;
+        createUniversity = defaultUni;
         departments = depts;
+        createDepartments = depts;
         if (depts.isNotEmpty) {
           selectedDept = depts.first;
           createDept = depts.first;
+          createDeptNameController.text = depts.first.name;
+        } else {
+          selectedDept = null;
+          createDept = null;
         }
       });
+
       if (selectedDept != null) {
-        await _loadBatchesForDept(selectedDept!);
+        await _loadBatchesForDept(selectedDept!, universityId: defaultUni.id);
       }
     } catch (e) {
-      setState(() => errorMessage = 'Failed to load departments: $e');
+      setState(() => errorMessage = 'Failed to load initial academic data: $e');
     } finally {
       setState(() => loadingData = false);
     }
   }
 
-  Future<void> _loadBatchesForDept(Department dept) async {
+  Future<void> _onUniversityChanged(University uni, {required bool isCreate}) async {
+    if (!isCreate) {
+      if (selectedUniversity?.id == uni.id) return;
+      setState(() {
+        selectedUniversity = uni;
+        selectedDept = null;
+        selectedBatch = null;
+        selectedSection = null;
+        departments = [];
+        batches = [];
+        sections = [];
+        errorMessage = null;
+        loadingData = true;
+      });
+
+      try {
+        final repo = context.read<AcademicStructureRepository>();
+        final depts = await repo.departments('Undergraduate', universityId: uni.id);
+        setState(() {
+          departments = depts;
+          if (depts.isNotEmpty) {
+            selectedDept = depts.first;
+          } else {
+            selectedDept = null;
+            selectedBatch = null;
+            selectedSection = null;
+            batches = [];
+            sections = [];
+          }
+        });
+
+        if (selectedDept != null) {
+          await _loadBatchesForDept(selectedDept!, universityId: uni.id);
+        }
+      } catch (e) {
+        setState(() => errorMessage = 'Failed to load university departments: $e');
+      } finally {
+        setState(() => loadingData = false);
+      }
+    } else {
+      if (createUniversity?.id == uni.id) return;
+      setState(() {
+        createUniversity = uni;
+        createDept = null;
+        createDepartments = [];
+      });
+
+      try {
+        final repo = context.read<AcademicStructureRepository>();
+        final depts = await repo.departments('Undergraduate', universityId: uni.id);
+        setState(() {
+          createDepartments = depts;
+          if (depts.isNotEmpty) {
+            createDept = depts.first;
+            createDeptNameController.text = depts.first.name;
+          } else {
+            createDept = null;
+          }
+        });
+      } catch (e) {
+        setState(() => errorMessage = 'Failed to load university departments: $e');
+      }
+    }
+  }
+
+  Future<void> _loadBatchesForDept(Department dept, {String? universityId}) async {
     try {
       final repo = context.read<AcademicStructureRepository>();
-      final progs = await repo.programs(dept.id, 'Undergraduate');
+      final uId = universityId ?? selectedUniversity?.id;
+      final progs = await repo.programs(dept.id, 'Undergraduate', universityId: uId);
       if (progs.isNotEmpty) {
         final bList = await repo.batches(progs.first.id);
         setState(() {
           batches = bList;
           if (bList.isNotEmpty) {
             selectedBatch = bList.first;
+          } else {
+            selectedBatch = null;
           }
         });
         if (selectedBatch != null) {
           await _loadSectionsForBatch(selectedBatch!);
         }
+      } else {
+        setState(() {
+          batches = [];
+          selectedBatch = null;
+          sections = [];
+          selectedSection = null;
+        });
       }
     } catch (e) {
       setState(() => errorMessage = 'Failed to load batches: $e');
@@ -125,7 +226,35 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
     }
   }
 
+  void _showUniversityPicker(BuildContext context, {required bool isCreate}) {
+    final c = context.colors;
+    final currentSelected = isCreate ? createUniversity : selectedUniversity;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: c.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        return _UniversitySearchSheet(
+          universities: universities,
+          selected: currentSelected,
+          onSelected: (uni) {
+            Navigator.of(sheetContext).pop();
+            _onUniversityChanged(uni, isCreate: isCreate);
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _joinClassroom() async {
+    if (selectedUniversity == null) {
+      setState(() => errorMessage = 'Please select a university first.');
+      return;
+    }
     if (selectedSection == null) {
       setState(() => errorMessage = 'Please select a classroom first.');
       return;
@@ -159,6 +288,8 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
         programName: selectedDept?.name ?? 'Computer Science & Engineering',
         batchName: selectedBatch?.label ?? 'Batch 64',
         sectionName: selectedSection!.label,
+        universityId: selectedUniversity?.id ?? 'lu',
+        universityName: selectedUniversity?.name ?? 'Leading University',
         role: grant.role,
       );
 
@@ -190,7 +321,18 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
     final adminPass = createAdminPassController.text.trim();
     final studentPass = createStudentPassController.text.trim();
 
-    if (createDept == null || batchText.isEmpty || sectionName.isEmpty) {
+    final deptName = createDept != null
+        ? createDept!.name
+        : createDeptNameController.text.trim();
+    final deptId = createDept != null
+        ? createDept!.id
+        : deptName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
+
+    if (createUniversity == null) {
+      setState(() => errorMessage = 'Please select a university.');
+      return;
+    }
+    if (deptName.isEmpty || batchText.isEmpty || sectionName.isEmpty) {
       setState(() => errorMessage = 'Please fill out all department and section fields.');
       return;
     }
@@ -210,12 +352,14 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
 
     try {
       final repo = context.read<AcademicStructureRepository>();
-      final batchId = 'bsc-${createDept!.id}-$batchText';
+      final batchId = 'bsc-$deptId-$batchText';
       final batchLabel = batchText.startsWith('Batch') ? batchText : 'Batch $batchText';
 
       final created = await repo.createSection(
-        departmentId: createDept!.id,
-        departmentName: createDept!.name,
+        universityId: createUniversity!.id,
+        universityName: createUniversity!.name,
+        departmentId: deptId,
+        departmentName: deptName,
         batchId: batchId,
         batchName: batchLabel,
         sectionName: sectionName,
@@ -228,7 +372,7 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
         submitting = false;
         createSuccess = true;
         createMessage =
-            'Classroom "${created.label}" requested successfully! It has been submitted for MyClass Owner verification and approval.';
+            'Classroom "${created.label}" for ${createUniversity!.name} requested successfully! It has been submitted for MyClass Owner verification and approval.';
       });
     } catch (e) {
       setState(() {
@@ -257,6 +401,8 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
       programName: 'Computer Science & Engineering',
       batchName: 'Batch 64',
       sectionName: 'Section B',
+      universityId: 'lu',
+      universityName: 'Leading University',
       role: UserRole.myClassOwner,
     );
 
@@ -298,6 +444,7 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
             ],
           ),
           const SizedBox(height: 12),
+
           // Tab switcher
           ChoiceBar<int>(
             values: const [0, 1, 2],
@@ -335,7 +482,7 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
   }
 
   Widget _buildJoinTab(AulaColors c) {
-    if (loadingData) {
+    if (loadingData && universities.isEmpty) {
       return const Padding(
         padding: EdgeInsets.all(32),
         child: Center(child: CupertinoActivityIndicator()),
@@ -346,71 +493,60 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Select your Department, Batch, and approved Section to enter:',
+          'Select your University, Department, Batch, and approved Section to enter:',
           style: context.type.bodyMedium?.copyWith(color: c.secondary),
         ),
         const SizedBox(height: 16),
 
-        // Department Selector
+        // 1. University Selector (Above Department)
+        Label('University', color: c.secondary),
+        const SizedBox(height: 6),
+        InkWell(
+          onTap: () => _showUniversityPicker(context, isCreate: false),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: c.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: c.line),
+            ),
+            child: Row(
+              children: [
+                Icon(CupertinoIcons.building_2_fill, size: 18, color: c.sage),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    selectedUniversity?.name ?? 'Select University',
+                    style: context.type.bodyMedium?.copyWith(
+                      color: selectedUniversity != null ? c.ink : c.faint,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Icon(CupertinoIcons.chevron_down, size: 16, color: c.secondary),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // 2. Department Selector
         Label('Department', color: c.secondary),
         const SizedBox(height: 6),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-          decoration: BoxDecoration(
-            color: c.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: c.line),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<Department>(
-              isExpanded: true,
-              value: selectedDept,
-              items: departments
-                  .map((d) => DropdownMenuItem(value: d, child: Text('${d.shortName} - ${d.name}')))
-                  .toList(),
-              onChanged: (d) {
-                if (d != null) {
-                  setState(() => selectedDept = d);
-                  _loadBatchesForDept(d);
-                }
-              },
+        if (loadingData)
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: c.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: c.line),
             ),
-          ),
-        ),
-        const SizedBox(height: 14),
-
-        // Batch Selector
-        Label('Batch', color: c.secondary),
-        const SizedBox(height: 6),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-          decoration: BoxDecoration(
-            color: c.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: c.line),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<Batch>(
-              isExpanded: true,
-              value: selectedBatch,
-              items: batches
-                  .map((b) => DropdownMenuItem(value: b, child: Text(b.label)))
-                  .toList(),
-              onChanged: (b) {
-                if (b != null) {
-                  setState(() => selectedBatch = b);
-                  _loadSectionsForBatch(b);
-                }
-              },
-            ),
-          ),
-        ),
-        const SizedBox(height: 14),
-
-        // Section Selector
-        Label('Approved Section / Classroom', color: c.secondary),
-        const SizedBox(height: 6),
-        if (sections.isEmpty)
+            child: const Center(child: CupertinoActivityIndicator()),
+          )
+        else if (departments.isEmpty)
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -418,8 +554,8 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              'No approved sections found for this batch. Switch to "Create Classroom" to request one.',
-              style: context.type.bodySmall?.copyWith(color: c.secondary),
+              'No departments configured yet for ${selectedUniversity?.name ?? 'this university'}. Switch to "Create Classroom" to request one.',
+              style: context.type.bodySmall?.copyWith(color: c.secondary, height: 1.35),
             ),
           )
         else
@@ -431,29 +567,125 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
               border: Border.all(color: c.line),
             ),
             child: DropdownButtonHideUnderline(
-              child: DropdownButton<Section>(
+              child: DropdownButton<Department>(
                 isExpanded: true,
-                value: selectedSection,
-                items: sections
-                    .map((s) => DropdownMenuItem(
-                          value: s,
-                          child: Text('${s.label} (${s.memberCount} members)'),
-                        ))
+                value: selectedDept,
+                items: departments
+                    .map((d) => DropdownMenuItem(value: d, child: Text('${d.shortName} - ${d.name}')))
                     .toList(),
-                onChanged: (s) {
-                  setState(() {
-                    selectedSection = s;
-                    if (isEnteringAsAdmin && s != null && s.creatorName != null && s.creatorName!.isNotEmpty) {
-                      joinNameController.text = s.creatorName!;
-                    }
-                  });
+                onChanged: (d) {
+                  if (d != null) {
+                    setState(() {
+                      selectedDept = d;
+                      selectedBatch = null;
+                      selectedSection = null;
+                      batches = [];
+                      sections = [];
+                    });
+                    _loadBatchesForDept(d, universityId: selectedUniversity?.id);
+                  }
                 },
               ),
             ),
           ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 14),
 
-        // Role Selector: Admin or Student
+        // 3. Batch Selector (Dependent on Department)
+        if (departments.isNotEmpty) ...[
+          Label('Batch', color: c.secondary),
+          const SizedBox(height: 6),
+          if (batches.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: c.subtle,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                'No batches found for this department.',
+                style: context.type.bodySmall?.copyWith(color: c.secondary),
+              ),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+              decoration: BoxDecoration(
+                color: c.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: c.line),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<Batch>(
+                  isExpanded: true,
+                  value: selectedBatch,
+                  items: batches
+                      .map((b) => DropdownMenuItem(value: b, child: Text(b.label)))
+                      .toList(),
+                  onChanged: (b) {
+                    if (b != null) {
+                      setState(() {
+                        selectedBatch = b;
+                        selectedSection = null;
+                        sections = [];
+                      });
+                      _loadSectionsForBatch(b);
+                    }
+                  },
+                ),
+              ),
+            ),
+          const SizedBox(height: 14),
+        ],
+
+        // 4. Section Selector (Dependent on Batch)
+        if (departments.isNotEmpty && batches.isNotEmpty) ...[
+          Label('Approved Section / Classroom', color: c.secondary),
+          const SizedBox(height: 6),
+          if (sections.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: c.subtle,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                'No approved sections found for this batch. Switch to "Create Classroom" to request one.',
+                style: context.type.bodySmall?.copyWith(color: c.secondary),
+              ),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+              decoration: BoxDecoration(
+                color: c.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: c.line),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<Section>(
+                  isExpanded: true,
+                  value: selectedSection,
+                  items: sections
+                      .map((s) => DropdownMenuItem(
+                            value: s,
+                            child: Text('${s.label} (${s.memberCount} members)'),
+                          ))
+                      .toList(),
+                  onChanged: (s) {
+                    setState(() {
+                      selectedSection = s;
+                      if (isEnteringAsAdmin && s != null && s.creatorName != null && s.creatorName!.isNotEmpty) {
+                        joinNameController.text = s.creatorName!;
+                      }
+                    });
+                  },
+                ),
+              ),
+            ),
+          const SizedBox(height: 18),
+        ],
+
+        // 5. Role Selector: Admin or Student
         Label('Are you entering as an Admin or as a Student?', color: c.secondary),
         const SizedBox(height: 8),
         Row(
@@ -492,7 +724,7 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
         ),
         const SizedBox(height: 16),
 
-        // Your Display Name
+        // 6. Student/Admin Display Name
         Label('Your Name', color: c.secondary),
         const SizedBox(height: 6),
         TextField(
@@ -504,7 +736,7 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
         ),
         const SizedBox(height: 14),
 
-        // Classroom Password
+        // 7. Classroom Password
         Label(
           isEnteringAsAdmin ? 'Admin Password' : 'Student Access Password',
           color: c.secondary,
@@ -527,7 +759,7 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
         ),
         const SizedBox(height: 22),
 
-        // Join Action Button
+        // 8. Join Action Button
         FilledButton(
           onPressed: submitting ? null : _joinClassroom,
           style: FilledButton.styleFrom(
@@ -601,27 +833,76 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
         ),
         const SizedBox(height: 18),
 
-        // Department
-        Label('Department', color: c.secondary),
+        // University Selector (Above Department)
+        Label('University', color: c.secondary),
         const SizedBox(height: 6),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-          decoration: BoxDecoration(
-            color: c.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: c.line),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<Department>(
-              isExpanded: true,
-              value: createDept,
-              items: departments
-                  .map((d) => DropdownMenuItem(value: d, child: Text('${d.shortName} - ${d.name}')))
-                  .toList(),
-              onChanged: (d) => setState(() => createDept = d),
+        InkWell(
+          onTap: () => _showUniversityPicker(context, isCreate: true),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: c.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: c.line),
+            ),
+            child: Row(
+              children: [
+                Icon(CupertinoIcons.building_2_fill, size: 18, color: c.sage),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    createUniversity?.name ?? 'Select University',
+                    style: context.type.bodyMedium?.copyWith(
+                      color: createUniversity != null ? c.ink : c.faint,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Icon(CupertinoIcons.chevron_down, size: 16, color: c.secondary),
+              ],
             ),
           ),
         ),
+        const SizedBox(height: 14),
+
+        // Department
+        Label('Department', color: c.secondary),
+        const SizedBox(height: 6),
+        if (createDepartments.isNotEmpty)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+            decoration: BoxDecoration(
+              color: c.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: c.line),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<Department>(
+                isExpanded: true,
+                value: createDept,
+                items: createDepartments
+                    .map((d) => DropdownMenuItem(value: d, child: Text('${d.shortName} - ${d.name}')))
+                    .toList(),
+                onChanged: (d) => setState(() {
+                  createDept = d;
+                  if (d != null) {
+                    createDeptNameController.text = d.name;
+                  }
+                }),
+              ),
+            ),
+          )
+        else
+          TextField(
+            controller: createDeptNameController,
+            decoration: const InputDecoration(
+              hintText: 'e.g. Computer Science & Engineering',
+              prefixIcon: Icon(CupertinoIcons.book, size: 18),
+            ),
+          ),
         const SizedBox(height: 14),
 
         // Batch & Section
@@ -754,6 +1035,146 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
           child: const Text('Enter as MyClass Owner'),
         ),
       ],
+    );
+  }
+}
+
+class _UniversitySearchSheet extends StatefulWidget {
+  const _UniversitySearchSheet({
+    required this.universities,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final List<University> universities;
+  final University? selected;
+  final ValueChanged<University> onSelected;
+
+  @override
+  State<_UniversitySearchSheet> createState() => _UniversitySearchSheetState();
+}
+
+class _UniversitySearchSheetState extends State<_UniversitySearchSheet> {
+  final TextEditingController _searchController = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final filtered = widget.universities.where((u) {
+      if (_query.isEmpty) return true;
+      final q = _query.toLowerCase().trim();
+      return u.name.toLowerCase().contains(q) || u.id.toLowerCase().contains(q);
+    }).toList();
+
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.85,
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Select University',
+                  style: context.type.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
+              IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(CupertinoIcons.xmark_circle_fill, size: 22),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Search Field
+          TextField(
+            controller: _searchController,
+            onChanged: (val) => setState(() => _query = val),
+            decoration: InputDecoration(
+              hintText: 'Search university (e.g. Leading, Dhaka, North)...',
+              prefixIcon: const Icon(CupertinoIcons.search, size: 18),
+              suffixIcon: _query.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(CupertinoIcons.clear_circled_solid, size: 18),
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() => _query = '');
+                      },
+                    )
+                  : null,
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          Text(
+            '${filtered.length} universities found',
+            style: context.type.bodySmall?.copyWith(color: c.secondary),
+          ),
+          const SizedBox(height: 8),
+
+          // University List
+          Expanded(
+            child: filtered.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(
+                        'No universities found matching "$_query"',
+                        textAlign: TextAlign.center,
+                        style: context.type.bodyMedium?.copyWith(color: c.secondary),
+                      ),
+                    ),
+                  )
+                : ListView.separated(
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, _) => Divider(height: 1, color: c.line),
+                    itemBuilder: (context, index) {
+                      final uni = filtered[index];
+                      final isSelected = widget.selected?.id == uni.id ||
+                          widget.selected?.name == uni.name;
+
+                      return InkWell(
+                        onTap: () => widget.onSelected(uni),
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                          decoration: BoxDecoration(
+                            color: isSelected ? c.sageBg : Colors.transparent,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  uni.name,
+                                  style: context.type.bodyMedium?.copyWith(
+                                    color: isSelected ? c.sage : c.ink,
+                                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              if (isSelected)
+                                Icon(CupertinoIcons.checkmark_alt_circle_fill, color: c.sage, size: 20),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -52,6 +52,8 @@ class Section extends Equatable {
     this.departmentId,
     this.departmentName,
     this.batchName,
+    this.universityId = 'lu',
+    this.universityName = 'Leading University',
   });
 
   final String id, batchId, label;
@@ -65,6 +67,8 @@ class Section extends Equatable {
   final String? departmentId;
   final String? departmentName;
   final String? batchName;
+  final String? universityId;
+  final String? universityName;
 
   bool get isApproved => status == SectionStatus.approved;
   bool get isPending => status == SectionStatus.pendingApproval;
@@ -83,6 +87,8 @@ class Section extends Equatable {
     String? departmentId,
     String? departmentName,
     String? batchName,
+    String? universityId,
+    String? universityName,
   }) => Section(
     id ?? this.id,
     batchId ?? this.batchId,
@@ -97,6 +103,8 @@ class Section extends Equatable {
     departmentId: departmentId ?? this.departmentId,
     departmentName: departmentName ?? this.departmentName,
     batchName: batchName ?? this.batchName,
+    universityId: universityId ?? this.universityId,
+    universityName: universityName ?? this.universityName,
   );
 
   @override
@@ -114,6 +122,8 @@ class Section extends Equatable {
     departmentId,
     departmentName,
     batchName,
+    universityId,
+    universityName,
   ];
 }
 
@@ -128,6 +138,8 @@ class SectionMembership extends Equatable {
     required this.programName,
     required this.batchName,
     required this.sectionName,
+    this.universityId = "lu",
+    this.universityName = "Leading University",
     this.role = UserRole.student,
   });
   final String departmentId;
@@ -136,7 +148,9 @@ class SectionMembership extends Equatable {
       batchId,
       programName,
       batchName,
-      sectionName;
+      sectionName,
+      universityId,
+      universityName;
   final UserRole role;
   bool get canManage =>
       role == UserRole.sectionAdmin ||
@@ -155,6 +169,8 @@ class SectionMembership extends Equatable {
     programName: programName,
     batchName: batchName,
     sectionName: sectionName,
+    universityId: universityId,
+    universityName: universityName,
     role: value,
   );
   Map<String, dynamic> toJson() => {
@@ -165,6 +181,8 @@ class SectionMembership extends Equatable {
     'programName': programName,
     'batchName': batchName,
     'sectionName': sectionName,
+    'universityId': universityId,
+    'universityName': universityName,
     'role': role.name,
   };
   factory SectionMembership.fromJson(Map<String, dynamic> j) =>
@@ -176,6 +194,8 @@ class SectionMembership extends Equatable {
         programName: j['programName'],
         batchName: j['batchName'],
         sectionName: j['sectionName'],
+        universityId: j['universityId'] ?? 'lu',
+        universityName: j['universityName'] ?? 'Leading University',
         role: UserRole.values.byName(j['role']),
       );
   @override
@@ -187,6 +207,8 @@ class SectionMembership extends Equatable {
     programName,
     batchName,
     sectionName,
+    universityId,
+    universityName,
     role,
   ];
 }
