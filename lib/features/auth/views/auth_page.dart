@@ -8,14 +8,46 @@ import '../bloc/auth_bloc.dart';
 typedef AulaMark = MyClassMark;
 
 class MyClassMark extends StatelessWidget {
-  const MyClassMark({super.key, this.size = 30});
+  const MyClassMark({
+    super.key,
+    this.size = 32,
+    this.withBadge = true,
+  });
+
   final double size;
+  final bool withBadge;
+
   @override
-  Widget build(BuildContext context) => SizedBox(
-    width: size,
-    height: size,
-    child: CustomPaint(painter: _MCMarkPainter(context.colors.ink)),
-  );
+  Widget build(BuildContext context) {
+    if (withBadge) {
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: const Color(0xFF28352D),
+          borderRadius: BorderRadius.circular(size * 0.24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        padding: EdgeInsets.all(size * 0.18),
+        child: const CustomPaint(
+          painter: _MCMarkPainter(Color(0xFFF3F5ED)),
+        ),
+      );
+    }
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(
+        painter: _MCMarkPainter(context.colors.ink),
+      ),
+    );
+  }
 }
 
 class _MCMarkPainter extends CustomPainter {
