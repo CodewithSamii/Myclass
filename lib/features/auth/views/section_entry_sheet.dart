@@ -440,7 +440,14 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
                           child: Text('${s.label} (${s.memberCount} members)'),
                         ))
                     .toList(),
-                onChanged: (s) => setState(() => selectedSection = s),
+                onChanged: (s) {
+                  setState(() {
+                    selectedSection = s;
+                    if (isEnteringAsAdmin && s != null && s.creatorName != null && s.creatorName!.isNotEmpty) {
+                      joinNameController.text = s.creatorName!;
+                    }
+                  });
+                },
               ),
             ),
           ),
@@ -457,7 +464,12 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
                 subtitle: 'View routine & events',
                 icon: CupertinoIcons.person_crop_circle,
                 selected: !isEnteringAsAdmin,
-                onTap: () => setState(() => isEnteringAsAdmin = false),
+                onTap: () => setState(() {
+                  isEnteringAsAdmin = false;
+                  if (selectedSection != null && joinNameController.text == selectedSection!.creatorName) {
+                    joinNameController.text = 'Student User';
+                  }
+                }),
               ),
             ),
             const SizedBox(width: 12),
@@ -467,7 +479,13 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
                 subtitle: 'Manage slots & routine',
                 icon: CupertinoIcons.slider_horizontal_3,
                 selected: isEnteringAsAdmin,
-                onTap: () => setState(() => isEnteringAsAdmin = true),
+                onTap: () => setState(() {
+                  isEnteringAsAdmin = true;
+                  final creator = selectedSection?.creatorName;
+                  if (selectedSection != null && (joinNameController.text == 'Student User' || joinNameController.text.isEmpty)) {
+                    joinNameController.text = (creator != null && creator.isNotEmpty) ? creator : 'Shuvo';
+                  }
+                }),
               ),
             ),
           ],
