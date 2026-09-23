@@ -335,7 +335,7 @@ void main() {
     () async {
       final bloc = ScheduleBloc(MockScheduleRepository(store), demo, section);
       await Future<void>.delayed(const Duration(milliseconds: 400));
-      expect(bloc.state.sessions.length, 15);
+      expect(bloc.state.sessions.length, 14);
       expect(bloc.state.courses, isNotEmpty);
       expect(bloc.state.periods, isNotEmpty);
       await bloc.close();

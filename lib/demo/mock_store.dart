@@ -22,12 +22,7 @@ class MockStore {
   List<ClassSession> routineFor(String section) =>
       routines.putIfAbsent(section, () => Fixtures.routine(section));
   List<TimeSlot> timeSlotsFor(String section) =>
-      timeSlots.putIfAbsent(section, () => [
-        const TimeSlot(id: 'ts1', label: '10:00–11:00', startMinute: 600, endMinute: 660, orderIndex: 0),
-        const TimeSlot(id: 'ts2', label: '11:00–12:00', startMinute: 660, endMinute: 720, orderIndex: 1),
-        const TimeSlot(id: 'ts3', label: '12:00–1:00', startMinute: 720, endMinute: 780, orderIndex: 2),
-        const TimeSlot(id: 'ts4', label: '1:00–2:00', startMinute: 780, endMinute: 840, orderIndex: 3),
-      ]);
+      timeSlots.putIfAbsent(section, () => List.from(Fixtures.defaultTimeSlots));
 
   Future<void> delay() =>
       Future<void>.delayed(const Duration(milliseconds: 260));

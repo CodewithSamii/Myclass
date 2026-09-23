@@ -21,7 +21,7 @@ void main() {
     final d = await boot(tester);
     expect(find.text('Schedule'), findsWidgets);
     await capture(tester, '01-schedule-light');
-    for (final tab in ['Tasks', 'Campus', 'Profile', 'Schedule']) {
+    for (final tab in ['Home', 'Schedule', 'Campus', 'Profile']) {
       await tester.tap(find.text(tab).last);
       await settle(tester);
     }

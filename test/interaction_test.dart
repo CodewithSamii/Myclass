@@ -157,7 +157,7 @@ void main() {
       await settle(tester);
       schedule.add(ScheduleDateSelected(DateTime(2026, 9, 23)));
       await settle(tester);
-      await tester.tap(find.text('Tasks').last);
+      await tester.tap(find.text('Campus').last);
       await settle(tester);
       await tester.tap(find.text('Schedule').last);
       await settle(tester);
@@ -225,7 +225,7 @@ void main() {
     tester.platformDispatcher.textScaleFactorTestValue = 1.5;
     await settle(tester);
     await capture(tester, '27-large-text-home');
-    for (final tab in ['Schedule', 'Tasks', 'Campus', 'Profile']) {
+    for (final tab in ['Home', 'Schedule', 'Campus', 'Profile']) {
       await tester.tap(find.text(tab).last);
       await settle(tester);
       expect(

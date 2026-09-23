@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/models.dart';
 import '../../../design_system/tokens.dart';
 import '../../../shared/widgets/primitives.dart';
+import '../../../demo/fixtures.dart';
 import '../../schedule/bloc/schedule_bloc.dart';
 
 class SetSlotsPage extends StatefulWidget {
@@ -24,12 +25,7 @@ class _SetSlotsPageState extends State<SetSlotsPage> {
     if (current.isNotEmpty) {
       slots = List.from(current);
     } else {
-      slots = [
-        const TimeSlot(id: 'ts1', label: '10:00–11:00', startMinute: 600, endMinute: 660, orderIndex: 0),
-        const TimeSlot(id: 'ts2', label: '11:00–12:00', startMinute: 660, endMinute: 720, orderIndex: 1),
-        const TimeSlot(id: 'ts3', label: '12:00–1:00', startMinute: 720, endMinute: 780, orderIndex: 2),
-        const TimeSlot(id: 'ts4', label: '1:00–2:00', startMinute: 780, endMinute: 840, orderIndex: 3),
-      ];
+      slots = List.from(Fixtures.defaultTimeSlots);
     }
   }
 

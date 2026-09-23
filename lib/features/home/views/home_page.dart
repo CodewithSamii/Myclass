@@ -7,7 +7,6 @@ import '../../../core/models.dart';
 import '../../../design_system/tokens.dart';
 import '../../../core/clock_cubit.dart';
 import '../../../shared/widgets/primitives.dart';
-import '../../../shared/widgets/academic_tiles.dart';
 import '../../events/bloc/events_bloc.dart';
 import '../../events/views/event_detail_page.dart';
 import '../../schedule/bloc/schedule_bloc.dart';
@@ -242,6 +241,10 @@ class HomePage extends StatelessWidget {
       events: es.items,
       progress: ps.progress,
     );
+    final upcomingEvents = es.items
+        .where((e) => e.status != EventStatus.cancelled)
+        .toList()
+      ..sort((a, b) => a.effectiveAt.compareTo(b.effectiveAt));
     final content = <Widget>[
       PageHeader(
         '${Fmt.weekday(now)}, ${now.day}',
@@ -303,251 +306,31 @@ class HomePage extends StatelessWidget {
               const Skeleton(rows: 3)
             else
               _FocusCard(model: model, onTap: () => _openFocus(context, model)),
-            if (model.dueToday.isNotEmpty &&
-                (model.current != null || model.next != null)) ...[
-              const SizedBox(height: 14),
-              Surface(
-                onTap: () => openPage(
-                  context,
-                  EventDetailPage(id: model.dueToday.first.id),
-                ),
-                padding: const EdgeInsets.all(14),
-                color: context.colors.amberBg,
-                border: false,
-                child: Row(
-                  children: [
-                    Icon(
-                      CupertinoIcons.doc_text,
-                      size: 18,
-                      color: context.colors.amber,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            model.dueToday.first.title,
-                            style: context.type.titleSmall?.copyWith(
-                              color: context.colors.amber,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Due today · ${Fmt.time(model.dueToday.first.effectiveAt)}${model.dueToday.length > 1 ? ' · +${model.dueToday.length - 1} more' : ''}',
-                            style: context.type.bodySmall?.copyWith(
-                              color: context.colors.amber,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Icon(
-                      CupertinoIcons.chevron_right,
-                      size: 12,
-                      color: context.colors.amber,
-                    ),
-                  ],
-                ),
-              ),
-            ],
+
             if (unknown) ...[
               const SizedBox(height: 14),
               const ErrorNotice(
                 'The class routine is not available yet. Academic events are still shown.',
               ),
             ],
-            if (model.prepareFor != null && model.current != null) ...[
-              const SizedBox(height: 14),
-              Surface(
-                onTap: () => openPage(
-                  context,
-                  EventDetailPage(id: model.prepareFor!.id),
-                ),
-                color: context.colors.amberBg,
-                border: false,
-                child: Row(
-                  children: [
-                    Icon(
-                      CupertinoIcons.doc_text_search,
-                      size: 19,
-                      color: context.colors.amber,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Label('Exam tomorrow', color: context.colors.amber),
-                          const SizedBox(height: 5),
-                          Text(
-                            model.prepareFor!.title,
-                            style: context.type.titleSmall,
-                          ),
-                        ],
-                      ),
-                    ),
-                    Icon(
-                      CupertinoIcons.chevron_right,
-                      size: 13,
-                      color: context.colors.amber,
-                    ),
-                  ],
-                ),
-              ),
-            ],
+
+            const SizedBox(height: 24),
             SectionHeader(
-              'Today',
+              'Upcoming Events',
               trailing: Text(
-                '${today.length} scheduled',
+                '${upcomingEvents.length} events',
                 style: context.type.bodySmall?.copyWith(
                   color: context.colors.secondary,
                 ),
               ),
             ),
-            if (today.isEmpty)
-              const EmptyState(
-                'Nothing on the schedule.',
-                'A little space to get ahead. Your next updates will appear here.',
-              )
-            else ...[
-              for (var i = 0; i < today.length; i++)
-                TimelineRow(
-                  entry: today[i],
-                  now: now,
-                  last: i == today.length - 1,
-                  conflict: AgendaProjection.conflicts(
-                    today,
-                  ).contains(today[i]),
-                  onTap: () => openAgenda(context, today[i]),
-                ),
-            ],
-            if (tomorrow.isNotEmpty) ...[
-              SectionHeader(
-                'A look at tomorrow',
-                action: 'View',
-                onAction: () {
-                  context.read<ScheduleBloc>().add(
-                    ScheduleDateSelected(
-                      dateOnly(now).add(const Duration(days: 1)),
-                    ),
-                  );
-                  onSchedule();
-                },
-              ),
-              Surface(
-                onTap: () {
-                  context.read<ScheduleBloc>().add(
-                    ScheduleDateSelected(
-                      dateOnly(now).add(const Duration(days: 1)),
-                    ),
-                  );
-                  onSchedule();
-                },
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: context.colors.subtle,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        children: [
-                          Label(
-                            Fmt.weekday(
-                              now.add(const Duration(days: 1)),
-                              short: true,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${now.add(const Duration(days: 1)).day}',
-                            style: context.type.headlineSmall,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${tomorrow.where((e) => e.session != null && !e.cancelled).length} classes · ${tomorrow.where((e) => e.event != null && e.event!.actionable).length} academic events',
-                            style: context.type.titleSmall,
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'First up at ${Fmt.time(tomorrow.first.at)}',
-                            style: context.type.bodySmall?.copyWith(
-                              color: context.colors.secondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            if (es.updates.isNotEmpty) ...[
-              const SectionHeader('What changed'),
-              for (final update in es.updates.take(3))
-                InkWell(
-                  onTap: () => openPage(
-                    context,
-                    update.sessionId == null
-                        ? EventDetailPage(id: update.eventId)
-                        : ClassDetailPage(
-                            sessionId: update.sessionId!,
-                            day: now,
-                          ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(
-                          CupertinoIcons.arrow_2_squarepath,
-                          size: 17,
-                          color: context.colors.secondary,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                update.title,
-                                style: context.type.titleSmall,
-                              ),
-                              const SizedBox(height: 5),
-                              Text(
-                                update.detail,
-                                style: context.type.bodyMedium?.copyWith(
-                                  color: context.colors.secondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          Fmt.ago(update.at, now),
-                          style: context.type.bodySmall?.copyWith(
-                            color: context.colors.faint,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
+            const SizedBox(height: 12),
+            _UpcomingEventsTable(
+              events: upcomingEvents,
+              now: now,
+              onTapEvent: (e) => openPage(context, EventDetailPage(id: e.id)),
+            ),
+
             const SizedBox(height: 24),
             SettingsRow(
               'A thought for later',
@@ -708,4 +491,249 @@ class _FocusCard extends StatelessWidget {
       ),
     ],
   );
+}
+
+/// 2-Column Upcoming Events Table
+/// Left column: Date & Time (Grouped under same date if multiple events on one day)
+/// Right column: Event title & details
+class _UpcomingEventsTable extends StatelessWidget {
+  const _UpcomingEventsTable({
+    required this.events,
+    required this.now,
+    required this.onTapEvent,
+  });
+
+  final List<AcademicEvent> events;
+  final DateTime now;
+  final ValueChanged<AcademicEvent> onTapEvent;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+
+    if (events.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(32),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: c.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: c.line),
+        ),
+        child: Column(
+          children: [
+            Icon(CupertinoIcons.calendar_badge_plus, size: 36, color: c.faint),
+            const SizedBox(height: 10),
+            Text(
+              'No Upcoming Events',
+              style: context.type.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Academic exams, assignments, and quizzes will appear here.',
+              textAlign: TextAlign.center,
+              style: context.type.bodySmall?.copyWith(color: c.secondary),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: c.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: c.line),
+      ),
+      child: Column(
+        children: [
+          // Table header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: c.subtle,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+            ),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 105,
+                  child: Text(
+                    'DATE & TIME',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                      color: c.secondary,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'EVENT',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                      color: c.secondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Event rows with same-day grouping
+          for (var i = 0; i < events.length; i++) ...[
+            if (i > 0) Divider(height: 1, color: c.line),
+            _UpcomingEventRow(
+              event: events[i],
+              isFirstOfDay: i == 0 || !sameDay(events[i].effectiveAt, events[i - 1].effectiveAt),
+              now: now,
+              onTap: () => onTapEvent(events[i]),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _UpcomingEventRow extends StatelessWidget {
+  const _UpcomingEventRow({
+    required this.event,
+    required this.isFirstOfDay,
+    required this.now,
+    required this.onTap,
+  });
+
+  final AcademicEvent event;
+  final bool isFirstOfDay;
+  final DateTime now;
+  final VoidCallback onTap;
+
+  bool get isMajorAssessment {
+    final t = event.type;
+    return t == AcademicEventType.classTest ||
+        t == AcademicEventType.presentation ||
+        t == AcademicEventType.viva ||
+        t == AcademicEventType.exam ||
+        t == AcademicEventType.labExam ||
+        t == AcademicEventType.quiz ||
+        t == AcademicEventType.assignment;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final timeStr = Fmt.time(event.effectiveAt);
+    final dateStr = Fmt.date(event.effectiveAt);
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Left Column: Date & Time
+            SizedBox(
+              width: 105,
+              child: isFirstOfDay
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          dateStr,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: c.ink,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          timeStr,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
+                            color: c.secondary,
+                          ),
+                        ),
+                      ],
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '—',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: c.faint,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          timeStr,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
+                            color: c.secondary,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+
+            const SizedBox(width: 12),
+
+            // Right Column: Event
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    event.title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: isMajorAssessment ? FontWeight.w700 : FontWeight.w600,
+                      color: isMajorAssessment ? const Color(0xFFD32F2F) : c.ink,
+                      decoration: isMajorAssessment ? TextDecoration.underline : TextDecoration.none,
+                      decorationColor: const Color(0xFFD32F2F),
+                      decorationThickness: 1.5,
+                    ),
+                  ),
+                  if (event.location != null && event.location!.isNotEmpty) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      event.location!.startsWith('Room') ||
+                              event.location!.startsWith('ACL') ||
+                              event.location!.startsWith('RKB')
+                          ? event.location!
+                          : 'Room ${event.location}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: c.secondary,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+
+            Icon(
+              CupertinoIcons.chevron_right,
+              size: 14,
+              color: c.faint,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

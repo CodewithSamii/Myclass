@@ -536,9 +536,12 @@ class _ScheduleTableRow extends StatelessWidget {
                       children: [
                         Icon(CupertinoIcons.location, size: 11, color: c.faint),
                         const SizedBox(width: 3),
-                        Text(
-                          entry.location.startsWith('Room') ? entry.location : 'Rm ${entry.location}',
-                          style: TextStyle(fontSize: 10, color: c.secondary),
+                        Expanded(
+                          child: Text(
+                            entry.location.startsWith('Room') ? entry.location : 'Rm ${entry.location}',
+                            style: TextStyle(fontSize: 10, color: c.secondary),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
                     ),

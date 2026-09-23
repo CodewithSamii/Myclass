@@ -69,14 +69,15 @@ class DemoController extends Cubit<DemoState> implements AppClock {
   @override
   DateTime get now => switch (state.scenario) {
     DemoScenario.morning => DateTime(2026, 9, 21, 7, 40),
+    DemoScenario.inClass => DateTime(2026, 9, 21, 12, 30),
     DemoScenario.deadlinesOnly => DateTime(2026, 9, 25, 16),
     DemoScenario.examTomorrow => DateTime(2026, 9, 23, 18),
     DemoScenario.finished => DateTime(2026, 9, 22, 21),
-    DemoScenario.weekend => DateTime(2026, 9, 26, 11),
+    DemoScenario.weekend => DateTime(2026, 9, 26, 17),
     DemoScenario.semesterBreak => DateTime(2026, 10, 23, 10),
     DemoScenario.examOnly => DateTime(2026, 9, 24, 8),
     DemoScenario.crowded => DateTime(2026, 9, 22, 10),
-    _ => DateTime(2026, 9, 21, 10, 48),
+    _ => DateTime(2026, 9, 21, 12, 30),
   };
   @override
   Stream<DateTime> get ticks => stream.map((_) => now);
