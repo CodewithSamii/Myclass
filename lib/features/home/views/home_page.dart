@@ -210,7 +210,18 @@ class HomePage extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 28),
+              Center(
+                child: Text(
+                  'MyClass v1.0.0 · © 2026 Saminul Islam Sami · All Rights Reserved',
+                  textAlign: TextAlign.center,
+                  style: context.type.bodySmall?.copyWith(
+                    color: c.faint,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
             ],
           ),
         ),
