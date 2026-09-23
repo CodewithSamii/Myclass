@@ -188,7 +188,10 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
         setState(() {
           batches = bList;
           if (bList.isNotEmpty) {
-            selectedBatch = bList.first;
+            selectedBatch = bList.firstWhere(
+              (b) => b.label.contains('64'),
+              orElse: () => bList.first,
+            );
           } else {
             selectedBatch = null;
           }
@@ -216,7 +219,10 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
       setState(() {
         sections = sList;
         if (sList.isNotEmpty) {
-          selectedSection = sList.first;
+          selectedSection = sList.firstWhere(
+            (s) => s.label.contains('Section I') || s.label.endsWith('I') || s.id.endsWith('-I'),
+            orElse: () => sList.first,
+          );
         } else {
           selectedSection = null;
         }
@@ -395,13 +401,13 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
     }
 
     const membership = SectionMembership(
-      sectionId: 'bsc-cse-64-B',
+      sectionId: 'bsc-cse-64-I',
       departmentId: 'cse',
       programId: 'bsc-cse',
       batchId: 'bsc-cse-64',
       programName: 'Computer Science & Engineering',
       batchName: 'Batch 64',
-      sectionName: 'Section B',
+      sectionName: 'Section I',
       universityId: 'lu',
       universityName: 'Leading University',
       role: UserRole.myClassOwner,
@@ -411,7 +417,7 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
       AuthSectionLoggedIn(
         name: 'MyClass Owner',
         membership: membership,
-        grant: const SectionGrant('bsc-cse-64-B', 'owner-token', role: UserRole.myClassOwner),
+        grant: const SectionGrant('bsc-cse-64-I', 'owner-token', role: UserRole.myClassOwner),
       ),
     );
 

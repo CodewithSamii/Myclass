@@ -750,14 +750,14 @@ class _OwnerSectionSwitcherSheetState extends State<OwnerSectionSwitcherSheet> {
 
       final bList = await repo.batches(prog.id);
       final defaultBatch = bList.firstWhere(
-        (b) => b.id == currentMem.batchId,
+        (b) => b.id == currentMem.batchId || b.label.contains('64'),
         orElse: () => bList.isNotEmpty ? bList.first : const Batch('b64', 'prog-cse', 'Batch 64'),
       );
 
       final sList = await repo.sections(defaultBatch.id);
       final defaultSec = sList.firstWhere(
-        (s) => s.id == currentMem.sectionId,
-        orElse: () => sList.isNotEmpty ? sList.first : const Section('s-b', 'b64', 'Section B'),
+        (s) => s.id == currentMem.sectionId || s.label.contains('Section I') || s.label.endsWith('I') || s.id.endsWith('-I'),
+        orElse: () => sList.isNotEmpty ? sList.first : const Section('s-i', 'b64', 'Section I'),
       );
 
       if (mounted) {

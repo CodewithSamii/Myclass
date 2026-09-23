@@ -28,17 +28,17 @@ class MyClassApp extends StatelessWidget {
     email: '',
     memberships: [
       SectionMembership(
-        sectionId: 'bsc-cse-64-B',
+        sectionId: 'bsc-cse-64-I',
         departmentId: 'cse',
         programId: 'bsc-cse',
         batchId: 'bsc-cse-64',
         programName: 'Computer Science & Engineering',
         batchName: 'Batch 64',
-        sectionName: 'Section B',
+        sectionName: 'Section I',
         role: UserRole.student,
       ),
     ],
-    activeSectionId: 'bsc-cse-64-B',
+    activeSectionId: 'bsc-cse-64-I',
   );
 
   @override

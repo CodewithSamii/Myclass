@@ -68,6 +68,42 @@ class MockAcademicStructureRepository implements AcademicStructureRepository {
       departmentName: 'Computer Science & Engineering',
       batchName: 'Batch 64',
     ),
+    'bsc-cse-64-F': const Section(
+      'bsc-cse-64-F',
+      'bsc-cse-64',
+      'Section F',
+      adminPassword: 'admin',
+      studentPassword: '123',
+      creatorName: 'Rashed Ali',
+      status: SectionStatus.approved,
+      departmentId: 'cse',
+      departmentName: 'Computer Science & Engineering',
+      batchName: 'Batch 64',
+    ),
+    'bsc-cse-64-G': const Section(
+      'bsc-cse-64-G',
+      'bsc-cse-64',
+      'Section G',
+      adminPassword: 'admin',
+      studentPassword: '123',
+      creatorName: 'Farhana Kabir',
+      status: SectionStatus.approved,
+      departmentId: 'cse',
+      departmentName: 'Computer Science & Engineering',
+      batchName: 'Batch 64',
+    ),
+    'bsc-cse-64-H': const Section(
+      'bsc-cse-64-H',
+      'bsc-cse-64',
+      'Section H',
+      adminPassword: 'admin',
+      studentPassword: '123',
+      creatorName: 'Mahmudul Karim',
+      status: SectionStatus.approved,
+      departmentId: 'cse',
+      departmentName: 'Computer Science & Engineering',
+      batchName: 'Batch 64',
+    ),
     'bsc-cse-64-I': const Section(
       'bsc-cse-64-I',
       'bsc-cse-64',
@@ -150,7 +186,8 @@ class MockAcademicStructureRepository implements AcademicStructureRepository {
   @override
   Future<List<Section>> sections(String batchId) async {
     await _delay();
-    final custom = _sectionStore.values.where((s) => s.batchId == batchId).toList();
+    final custom = _sectionStore.values.where((s) => s.batchId == batchId).toList()
+      ..sort((a, b) => a.label.compareTo(b.label));
     if (custom.isNotEmpty) return custom;
     return [
       for (final s in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'])

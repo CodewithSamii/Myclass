@@ -500,9 +500,7 @@ class _ScheduleTableRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final timeStr = entry.deadline
-        ? 'Due ${Fmt.time(entry.at)}'
-        : entry.end != null
+    final timeStr = entry.end != null
         ? '${Fmt.time(entry.at, suffix: false)}–${Fmt.time(entry.end!)}'
         : Fmt.time(entry.at);
 

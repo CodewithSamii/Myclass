@@ -16,16 +16,34 @@ import '../../profile/bloc/profile_bloc.dart';
 import '../bloc/event_editor_bloc.dart';
 
 class EventEditorPage extends StatelessWidget {
-  const EventEditorPage({super.key, this.event, this.postpone = false, this.initialDate});
+  const EventEditorPage({
+    super.key,
+    this.event,
+    this.postpone = false,
+    this.initialDate,
+    this.initialCourseId,
+  });
   final AcademicEvent? event;
   final bool postpone;
   final DateTime? initialDate;
+  final String? initialCourseId;
+
   @override
   Widget build(BuildContext context) {
     final p = context.read<ProfileBloc>().state.profile;
     final now = context.read<ClockCubit>().state;
     final targetDate = initialDate ?? dateOnly(now.add(const Duration(days: 1)));
-    final cs = context.read<ScheduleBloc>().state.courses;
+    final scheduleState = context.read<ScheduleBloc>().state;
+    final cs = scheduleState.courses;
+    final daySessions = scheduleState.sessions
+        .where((s) => s.weekday == targetDate.weekday)
+        .toList();
+
+    final defaultCourseId = initialCourseId ??
+        (daySessions.isNotEmpty
+            ? daySessions.first.courseId
+            : (cs.isNotEmpty ? cs.first.id : ''));
+
     if (!p.membership.canManage) {
       return const DetailPage(
         title: 'Section access',
@@ -50,7 +68,7 @@ class EventEditorPage extends StatelessWidget {
               id: 'event-${DateTime.now().microsecondsSinceEpoch}',
               title: '',
               type: AcademicEventType.assignment,
-              courseId: cs.firstOrNull?.id ?? '',
+              courseId: defaultCourseId,
               date: targetDate,
               deadline: DateTime(targetDate.year, targetDate.month, targetDate.day, 23, 59),
               sectionId: p.activeSectionId,
@@ -164,14 +182,44 @@ class _EditorContent extends StatelessWidget {
                 ),
               ),
               FieldLabel(
-                'Course',
+                'Class / Routine Slot',
                 Surface(
                   onTap: () async {
+                    final daySessions = context
+                        .read<ScheduleBloc>()
+                        .state
+                        .sessions
+                        .where((s) => s.weekday == d.date.weekday)
+                        .toList();
+
+                    final availableCourses = daySessions.isNotEmpty
+                        ? daySessions
+                            .map((s) => courses.firstWhere(
+                                  (c) => c.id == s.courseId,
+                                  orElse: () => Course(
+                                    id: s.courseId,
+                                    name: s.courseId,
+                                    facultyId: '',
+                                    departmentId: '',
+                                  ),
+                                ))
+                            .toSet()
+                            .toList()
+                        : courses;
+
                     final value = await selectOption<Course>(
                       context,
-                      title: 'Choose a course',
-                      options: Future.value(courses),
-                      label: (v) => v.name,
+                      title: 'Select routine class',
+                      options: Future.value(availableCourses),
+                      label: (v) {
+                        final session = daySessions.where((s) => s.courseId == v.id).firstOrNull;
+                        if (session != null) {
+                          final startStr = Fmt.minute(session.startMinute, suffix: false);
+                          final endStr = Fmt.minute(session.endMinute);
+                          return '${v.name} ($startStr–$endStr${session.room != null && session.room!.isNotEmpty ? " · ${session.room}" : ""})';
+                        }
+                        return v.name;
+                      },
                       selected: course,
                     );
                     if (value != null && !b.isClosed) {
@@ -180,7 +228,7 @@ class _EditorContent extends StatelessWidget {
                   },
                   child: Row(
                     children: [
-                      Expanded(child: Text(course?.name ?? 'Choose a course')),
+                      Expanded(child: Text(course?.name ?? 'Select routine class')),
                       const Icon(CupertinoIcons.chevron_down, size: 14),
                     ],
                   ),
@@ -194,18 +242,17 @@ class _EditorContent extends StatelessWidget {
                   maxLength: 160,
                   textCapitalization: TextCapitalization.sentences,
                   onChanged: (v) => b.add(EditorChanged(EditorField.title, v)),
-                  decoration: InputDecoration(
-                    hintText: d.type.isDeadline
-                        ? 'e.g. Database assignment 04'
-                        : 'e.g. Networking viva',
+                  decoration: const InputDecoration(
+                    hintText: 'e.g. Chapter 4 Assignment, Midterm Quiz',
                     counterText: '',
                   ),
                 ),
               ),
               FieldLabel(
-                d.type.isDeadline ? 'Submission date' : 'Date',
+                'Date',
                 Surface(
                   onTap: () async {
+                    final scheduleBloc = context.read<ScheduleBloc>();
                     final date = await showDatePicker(
                       context: context,
                       initialDate: d.date,
@@ -214,6 +261,14 @@ class _EditorContent extends StatelessWidget {
                     );
                     if (date != null && !b.isClosed) {
                       b.add(EditorChanged(EditorField.date, date));
+                      final nextSessions = scheduleBloc
+                          .state
+                          .sessions
+                          .where((s) => s.weekday == date.weekday)
+                          .toList();
+                      if (nextSessions.isNotEmpty && !nextSessions.any((s) => s.courseId == d.courseId)) {
+                        b.add(EditorChanged(EditorField.course, nextSessions.first.courseId));
+                      }
                     }
                   },
                   child: Row(
@@ -227,7 +282,7 @@ class _EditorContent extends StatelessWidget {
                 ),
               ),
               FieldLabel(
-                d.type.isDeadline ? 'Deadline time' : 'Start time',
+                'Time',
                 Surface(
                   onTap: () => _time(context, b, d),
                   child: Row(
@@ -399,7 +454,7 @@ class _EditorContent extends StatelessWidget {
                     Text(
                       d.startsAt == null && d.deadline == null
                           ? 'Time to be announced'
-                          : '${d.type.isDeadline ? 'Due by ' : ''}${Fmt.time(d.effectiveAt)}',
+                          : Fmt.time(d.effectiveAt),
                       style: context.type.bodyLarge,
                     ),
                     if (d.location?.isNotEmpty == true) ...[

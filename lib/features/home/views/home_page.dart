@@ -270,13 +270,6 @@ class HomePage extends StatelessWidget {
     );
     final conflicts = AgendaProjection.conflicts(selectedEntries);
 
-    final dueOnSelected = es.items
-        .where((e) =>
-            e.actionable &&
-            e.status != EventStatus.cancelled &&
-            sameDay(e.effectiveAt, ss.selected))
-        .toList();
-
     final notes = context
         .watch<NotesBloc>()
         .state
@@ -391,10 +384,22 @@ class HomePage extends StatelessWidget {
                   children: [
                     if (profile.membership.canManage || profile.membership.isOwner)
                       TextButton.icon(
-                        onPressed: () => openPage(
-                          context,
-                          EventEditorPage(initialDate: ss.selected),
-                        ),
+                        onPressed: () {
+                          final daySessions = ss.sessions.where((s) => s.weekday == ss.selected.weekday).toList();
+                          if (daySessions.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('No routine classes scheduled for ${Fmt.weekday(ss.selected)}. Events can only be assigned to existing routine classes.'),
+                                backgroundColor: context.colors.amber,
+                              ),
+                            );
+                          } else {
+                            openPage(
+                              context,
+                              EventEditorPage(initialDate: ss.selected),
+                            );
+                          }
+                        },
                         icon: const Icon(CupertinoIcons.plus_circle, size: 15),
                         label: const Text('Add Event'),
                         style: TextButton.styleFrom(
@@ -412,57 +417,6 @@ class HomePage extends StatelessWidget {
                 ),
               ],
             ),
-
-            if (dueOnSelected.isNotEmpty) ...[
-              for (final ev in dueOnSelected.take(5)) ...[
-                const SizedBox(height: 8),
-                Surface(
-                  onTap: () => openPage(
-                    context,
-                    EventDetailPage(id: ev.id),
-                  ),
-                  padding: const EdgeInsets.all(12),
-                  color: context.colors.amberBg,
-                  border: false,
-                  child: Row(
-                    children: [
-                      Icon(
-                        CupertinoIcons.doc_text,
-                        size: 18,
-                        color: context.colors.amber,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              ev.title,
-                              style: context.type.titleSmall?.copyWith(
-                                color: context.colors.amber,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${sameDay(ev.effectiveAt, ss.now) ? "Today" : Fmt.date(ev.effectiveAt)}, ${Fmt.time(ev.effectiveAt)}${ev.location != null && ev.location!.isNotEmpty ? " · ${ev.location}" : ""}',
-                              style: context.type.bodySmall?.copyWith(
-                                color: context.colors.amber,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Icon(
-                        CupertinoIcons.chevron_right,
-                        size: 14,
-                        color: context.colors.amber,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ],
 
             if (conflicts.isNotEmpty) ...[
               const SizedBox(height: 8),
@@ -587,9 +541,11 @@ class HomePage extends StatelessWidget {
 
 void openAgenda(BuildContext context, AgendaEntry entry) => openPage(
   context,
-  entry.event != null
-      ? EventDetailPage(id: entry.event!.id)
-      : ClassDetailPage(sessionId: entry.session!.id, day: entry.day),
+  entry.events.isNotEmpty
+      ? EventDetailPage(id: entry.events.first.id)
+      : (entry.event != null
+          ? EventDetailPage(id: entry.event!.id)
+          : ClassDetailPage(sessionId: entry.session!.id, day: entry.day)),
 );
 
 /// Compact Focus Card ("Happening Now")
@@ -1096,29 +1052,21 @@ class _ScheduleTableRow extends StatelessWidget {
   final DateTime now;
   final VoidCallback onTap;
 
-  bool get isMajorAssessment {
-    if (entry.event == null) return false;
-    final t = entry.event!.type;
-    return t == AcademicEventType.classTest ||
-        t == AcademicEventType.presentation ||
-        t == AcademicEventType.viva ||
-        t == AcademicEventType.exam ||
-        t == AcademicEventType.labExam ||
-        t == AcademicEventType.quiz ||
-        t == AcademicEventType.assignment;
-  }
-
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final timeStr = entry.deadline
-        ? 'Due ${Fmt.time(entry.at)}'
-        : entry.end != null
+    final timeStr = entry.end != null
         ? '${Fmt.time(entry.at, suffix: false)}–${Fmt.time(entry.end!)}'
         : Fmt.time(entry.at);
 
-    final isAcademicEvent = entry.event != null;
     final isCancelled = entry.cancelled;
+    final attachedEvents = entry.events.isNotEmpty
+        ? entry.events
+        : (entry.event != null ? [entry.event!] : <AcademicEvent>[]);
+
+    final displayName = (entry.course.name.isNotEmpty && entry.course.name != 'Course details pending')
+        ? entry.course.name
+        : (entry.event?.title ?? entry.course.name);
 
     return InkWell(
       onTap: onTap,
@@ -1140,7 +1088,7 @@ class _ScheduleTableRow extends StatelessWidget {
                       color: isCancelled ? c.faint : c.ink,
                     ),
                   ),
-                  if (entry.location.isNotEmpty && !entry.deadline) ...[
+                  if (entry.location.isNotEmpty && entry.location != 'Room to be announced') ...[
                     const SizedBox(height: 4),
                     Row(
                       children: [
@@ -1148,7 +1096,9 @@ class _ScheduleTableRow extends StatelessWidget {
                         const SizedBox(width: 3),
                         Expanded(
                           child: Text(
-                            entry.location.startsWith('Room') ? entry.location : 'Rm ${entry.location}',
+                            entry.location.startsWith('Room') || entry.location.startsWith('ACL') || entry.location.startsWith('RKB')
+                                ? entry.location
+                                : 'Rm ${entry.location}',
                             style: TextStyle(fontSize: 10, color: c.secondary),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -1164,42 +1114,29 @@ class _ScheduleTableRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (isAcademicEvent && isMajorAssessment) ...[
-                    Text(
-                      '${entry.event!.type.label.toUpperCase()}: ${entry.title}',
-                      style: const TextStyle(
-                        color: Color(0xFFC62828),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        decoration: TextDecoration.underline,
-                        decorationColor: Color(0xFFC62828),
-                        decorationThickness: 1.5,
-                      ),
+                  Text(
+                    displayName,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: isCancelled ? c.faint : c.ink,
+                      decoration: isCancelled ? TextDecoration.lineThrough : null,
                     ),
-                  ] else ...[
-                    Text(
-                      entry.title,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: isCancelled ? c.faint : c.ink,
-                        decoration: isCancelled ? TextDecoration.lineThrough : null,
-                      ),
-                    ),
-                  ],
+                  ),
                   const SizedBox(height: 3),
                   Wrap(
                     crossAxisAlignment: WrapCrossAlignment.center,
                     spacing: 6,
                     runSpacing: 2,
                     children: [
-                      Text(
-                        entry.course.compactName,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: c.secondary,
+                      if (entry.course.code != null && entry.course.code!.isNotEmpty)
+                        Text(
+                          entry.course.code!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: c.secondary,
+                          ),
                         ),
-                      ),
                       if (entry.session?.isLab == true)
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
@@ -1223,6 +1160,41 @@ class _ScheduleTableRow extends StatelessWidget {
                         ),
                     ],
                   ),
+                  if (attachedEvents.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    for (final ev in attachedEvents) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(top: 3),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              margin: const EdgeInsets.only(right: 6),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFC62828),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                '${ev.type.label}: ${ev.title}',
+                                style: const TextStyle(
+                                  color: Color(0xFFC62828),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                  decoration: TextDecoration.underline,
+                                  decorationColor: Color(0xFFC62828),
+                                  decorationThickness: 1.5,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
                 ],
               ),
             ),

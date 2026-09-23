@@ -7,14 +7,16 @@ class AgendaEntry {
     required this.at,
     required this.course,
     this.event,
+    this.events = const [],
     this.session,
     required this.day,
   });
   final DateTime at, day;
   final Course course;
   final AcademicEvent? event;
+  final List<AcademicEvent> events;
   final ClassSession? session;
-  String get id => event?.id ?? '${session!.id}-${day.toIso8601String()}';
+  String get id => event?.id ?? (events.isNotEmpty ? events.first.id : '${session!.id}-${day.toIso8601String()}');
   String get title => event?.title ?? course.name;
   bool get cancelled =>
       event?.status == EventStatus.cancelled || session?.cancelled == true;
@@ -52,24 +54,44 @@ abstract final class AgendaProjection {
         departmentId: '',
       ),
     );
-    final list = <AgendaEntry>[
-      if (!omitRoutine &&
-          !periods.any((p) => p.classesSuspended && p.includes(day)))
-        for (final s in sessions.where((s) => s.weekday == day.weekday))
+
+    final dayEvents = events.where((e) => sameDay(e.date, day)).toList();
+    final daySessions = sessions.where((s) => s.weekday == day.weekday).toList();
+
+    final list = <AgendaEntry>[];
+
+    if (!omitRoutine && !periods.any((p) => p.classesSuspended && p.includes(day))) {
+      for (final s in daySessions) {
+        final matchingEvents = dayEvents.where((e) => e.courseId == s.courseId).toList();
+        list.add(
           AgendaEntry(
             at: s.startOn(day),
             day: day,
             course: course(s.courseId),
             session: s,
+            events: matchingEvents,
+            event: matchingEvents.isNotEmpty ? matchingEvents.first : null,
           ),
-      for (final e in events.where((e) => sameDay(e.date, day)))
-        AgendaEntry(
-          at: e.effectiveAt,
-          day: day,
-          course: course(e.courseId),
-          event: e,
-        ),
-    ];
+        );
+      }
+    }
+
+    // Include any standalone events on this day whose course is not already in daySessions
+    for (final e in dayEvents) {
+      final alreadyInSession = daySessions.any((s) => s.courseId == e.courseId);
+      if (!alreadyInSession) {
+        list.add(
+          AgendaEntry(
+            at: e.effectiveAt,
+            day: day,
+            course: course(e.courseId),
+            event: e,
+            events: [e],
+          ),
+        );
+      }
+    }
+
     list.sort((a, b) {
       if (a.timeUnknown != b.timeUnknown) return a.timeUnknown ? 1 : -1;
       return a.at.compareTo(b.at);

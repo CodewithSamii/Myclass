@@ -103,7 +103,7 @@ class EventDetailPage extends StatelessWidget {
                   context,
                   CupertinoIcons.clock,
                   e.deadline != null
-                      ? 'Due by ${Fmt.time(e.deadline!)}'
+                      ? Fmt.time(e.deadline!)
                       : e.startsAt != null
                       ? '${Fmt.time(e.startsAt!)}${e.endsAt != null ? ' – ${Fmt.time(e.endsAt!)}' : ''}'
                       : 'Time to be announced',
