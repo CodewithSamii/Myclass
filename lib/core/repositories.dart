@@ -1,0 +1,9 @@
+export '../features/auth/repositories/auth_repository.dart';
+export '../features/onboarding/repositories/academic_structure_repository.dart';
+export '../features/schedule/repositories/schedule_repository.dart';
+export '../features/events/repositories/events_repository.dart';
+export '../features/notes/repositories/notes_repository.dart';
+export '../features/profile/repositories/profile_repository.dart';
+export '../features/tasks/repositories/progress_repository.dart';
+export '../features/campus/repositories/campus_repository.dart';
+export '../features/search/repositories/search_repository.dart';

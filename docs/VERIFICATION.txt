@@ -1,0 +1,17 @@
+Aula frontend verification
+
+Environment: Flutter 3.47.3 / Dart 3.13.3, Linux
+
+flutter analyze --no-pub
+  No issues found.
+
+flutter test
+  26 tests passed: domain behavior, rendered journeys, interaction journeys.
+  Two affected onboarding journeys also rerun after the final layout adjustment.
+
+flutter build web --release --no-pub --no-web-resources-cdn --no-wasm-dry-run
+  Built build/web successfully. CanvasKit resources bundled locally.
+
+30 screen captures generated with the actual Flutter renderer.
+Native device builds and browser runtime interactions were not run in this environment.
+See QA.md for device validation limits and README.md for simulation boundaries.
