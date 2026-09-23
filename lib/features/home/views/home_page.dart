@@ -23,6 +23,198 @@ class HomePage extends StatelessWidget {
   final VoidCallback onSchedule;
   @override
   Widget build(BuildContext context) {
+    final profile = context.watch<ProfileBloc>().state.profile;
+    final isGuest = profile.uid == 'guest';
+
+    final child = isGuest
+        ? _buildLoggedOutHome(context)
+        : _buildLoggedInHome(context, profile);
+
+    return Material(
+      type: MaterialType.transparency,
+      child: child,
+    );
+  }
+
+  Widget _buildLoggedOutHome(BuildContext context) {
+    final c = context.colors;
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        PageHeader(
+          'MyClass',
+          eyebrow: 'Metropolitan University',
+          subtitle: 'Welcome. Select or join your classroom to access routines, schedules, and notices.',
+          actions: [
+            IconButton(
+              tooltip: 'Search everything',
+              onPressed: () => openPage(context, const SearchPage()),
+              icon: const Icon(CupertinoIcons.search, size: 22),
+            ),
+          ],
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Surface(
+                color: c.sageBg,
+                border: false,
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(CupertinoIcons.person_2_fill, color: c.sage, size: 24),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Join or Create Classroom',
+                          style: context.type.titleMedium?.copyWith(
+                            color: c.sage,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Select your department, batch, and section to access your personalized classroom schedule, or request a new section as an Admin.',
+                      style: context.type.bodyMedium?.copyWith(
+                        color: c.ink,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton(
+                      onPressed: onSchedule,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: c.sage,
+                        minimumSize: const Size.fromHeight(46),
+                      ),
+                      child: const Text('Enter Classroom / Join', style: TextStyle(fontWeight: FontWeight.w600)),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
+              Text(
+                'Explore MyClass',
+                style: context.type.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+
+              Surface(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: c.subtle,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(CupertinoIcons.calendar, color: c.ink, size: 22),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Class Schedules & Routine',
+                            style: context.type.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'Universal time periods and 7-day routine matrices customized for each university batch.',
+                            style: context.type.bodySmall?.copyWith(color: c.secondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              Surface(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: c.subtle,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(CupertinoIcons.checkmark_circle, color: c.ink, size: 22),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Assignments & Tasks',
+                            style: context.type.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'Track academic deadlines, submissions, and reminders with personal completion status.',
+                            style: context.type.bodySmall?.copyWith(color: c.secondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              Surface(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: c.subtle,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(CupertinoIcons.bus, color: c.ink, size: 22),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Campus Services & Faculty',
+                            style: context.type.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'Browse university bus routes, timetables, and find faculty contacts effortlessly.',
+                            style: context.type.bodySmall?.copyWith(color: c.secondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 32),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLoggedInHome(BuildContext context, UserProfile profile) {
     final es = context.watch<EventsBloc>().state;
     final ss = context.watch<ScheduleBloc>().state;
     final ps = context.watch<TasksBloc>().state;
@@ -50,7 +242,6 @@ class HomePage extends StatelessWidget {
       events: es.items,
       progress: ps.progress,
     );
-    final profile = context.watch<ProfileBloc>().state.profile;
     final content = <Widget>[
       PageHeader(
         '${Fmt.weekday(now)}, ${now.day}',
@@ -70,49 +261,6 @@ class HomePage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (profile.uid == 'guest') ...[
-              Surface(
-                color: context.colors.sageBg,
-                border: false,
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(CupertinoIcons.person_2_fill, color: context.colors.sage, size: 22),
-                        const SizedBox(width: 10),
-                        Text(
-                          'Join or Create Classroom',
-                          style: context.type.titleMedium?.copyWith(
-                            color: context.colors.sage,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Select your department and batch to access your classroom schedule, or request a new section as an Admin.',
-                      style: context.type.bodyMedium?.copyWith(
-                        color: context.colors.ink,
-                        height: 1.35,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    FilledButton(
-                      onPressed: onSchedule,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: context.colors.sage,
-                        minimumSize: const Size.fromHeight(44),
-                      ),
-                      child: const Text('Enter Classroom / Join'),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-            ],
             if (es.offline || es.stale) ...[
 
               Surface(

@@ -38,24 +38,6 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
     setState(() => index = i);
   }
 
-  void _openHomeView(BuildContext context) {
-    Navigator.of(context).pop();
-    openPage(
-      context,
-      Scaffold(
-        appBar: AppBar(
-          title: const Text('Home Overview'),
-        ),
-        body: HomePage(
-          onSchedule: () {
-            Navigator.of(context).pop();
-            select(0);
-          },
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -394,13 +376,6 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 children: [
-                  ListTile(
-                    leading: const Icon(CupertinoIcons.house, size: 20),
-                    title: const Text('Home'),
-                    subtitle: const Text('View daily focus & notifications'),
-                    onTap: () => _openHomeView(context),
-                  ),
-
                   if (isLoggedIn) ...[
                     ListTile(
                       leading: const Icon(CupertinoIcons.calendar, size: 20),

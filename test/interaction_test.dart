@@ -12,6 +12,7 @@ import 'package:sami_p/features/schedule/bloc/schedule_bloc.dart';
 import 'package:sami_p/features/section_admin/views/event_editor_page.dart';
 import 'package:sami_p/features/campus/views/faculty_page.dart';
 import 'package:sami_p/features/campus/views/bus_page.dart';
+import 'package:sami_p/features/home/views/home_page.dart';
 import 'package:sami_p/demo/demo_controller.dart';
 import 'package:sami_p/demo/fixtures.dart';
 import 'support/harness.dart';
@@ -246,10 +247,7 @@ void main() {
     'all home scenarios preserve readable data with offline and missing routine states',
     (tester) async {
       final d = await boot(tester);
-      final scaffoldState = tester.firstState<ScaffoldState>(find.byType(Scaffold));
-      scaffoldState.openDrawer();
-      await settle(tester);
-      await tester.tap(find.text('Home').last);
+      await push(tester, HomePage(onSchedule: () {}));
       await settle(tester);
 
       for (final scenario in DemoScenario.values) {

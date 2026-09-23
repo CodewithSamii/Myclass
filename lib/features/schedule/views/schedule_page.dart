@@ -41,6 +41,13 @@ class SchedulePage extends StatelessWidget {
     final selectedEntries = entries(s.selected);
     final conflicts = AgendaProjection.conflicts(selectedEntries);
 
+    final dueToday = events
+        .where((e) =>
+            e.actionable &&
+            e.status != EventStatus.cancelled &&
+            sameDay(e.effectiveAt, s.selected))
+        .toList();
+
     final notes = context
         .watch<NotesBloc>()
         .state
@@ -107,6 +114,55 @@ class SchedulePage extends StatelessWidget {
                   ),
                 ],
               ),
+
+              if (dueToday.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Surface(
+                  onTap: () => openPage(
+                    context,
+                    EventDetailPage(id: dueToday.first.id),
+                  ),
+                  padding: const EdgeInsets.all(14),
+                  color: c.amberBg,
+                  border: false,
+                  child: Row(
+                    children: [
+                      Icon(
+                        CupertinoIcons.doc_text,
+                        size: 20,
+                        color: c.amber,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              dueToday.first.title,
+                              style: context.type.titleSmall?.copyWith(
+                                color: c.amber,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Due ${sameDay(dueToday.first.effectiveAt, s.now) ? "Today" : Fmt.date(dueToday.first.effectiveAt)}, ${Fmt.time(dueToday.first.effectiveAt)}${dueToday.length > 1 ? " · +${dueToday.length - 1} more event${dueToday.length > 2 ? 's' : ''}" : ""}',
+                              style: context.type.bodySmall?.copyWith(
+                                color: c.amber,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        CupertinoIcons.chevron_right,
+                        size: 14,
+                        color: c.amber,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
 
               if (conflicts.isNotEmpty) ...[
                 const SizedBox(height: 10),

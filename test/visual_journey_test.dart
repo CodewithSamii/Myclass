@@ -25,15 +25,13 @@ void main() {
       await tester.tap(find.text(tab).last);
       await settle(tester);
     }
-    // Open burger drawer and navigate to Home
+    // Open burger drawer
     final scaffoldState = tester.firstState<ScaffoldState>(find.byType(Scaffold));
     scaffoldState.openDrawer();
     await settle(tester);
     await capture(tester, '02-drawer-menu');
-    await tester.tap(find.text('Home').last);
+    scaffoldState.closeDrawer();
     await settle(tester);
-    await capture(tester, '03-home-via-drawer');
-    await back(tester);
 
     await push(tester, const EventDetailPage(id: 'bsc-cse-64-I-network-viva'));
     await capture(tester, '06-event-detail');
