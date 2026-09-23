@@ -30,7 +30,6 @@ class CampusPage extends StatelessWidget {
       children: [
         PageHeader(
           'Around campus',
-          eyebrow: 'Metropolitan University',
           subtitle: 'The useful things, close at hand.',
           actions: [
             IconButton(

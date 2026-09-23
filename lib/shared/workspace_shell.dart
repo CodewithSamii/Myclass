@@ -265,7 +265,7 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
 
   Widget _buildBurgerMenuDrawer({
     required BuildContext context,
-    required AulaColors c,
+    required MyClassColors c,
     required bool isLoggedIn,
     required SectionMembership membership,
     required bool isAdmin,

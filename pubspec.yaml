@@ -1,5 +1,5 @@
-name: sami_p
-description: "A calm, section-aware academic workspace."
+name: myclass
+description: "MyClass - A calm, section-aware academic workspace."
 publish_to: 'none'
 version: 1.0.0+1
 

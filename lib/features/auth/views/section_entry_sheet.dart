@@ -422,6 +422,8 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
   Widget build(BuildContext context) {
     final c = context.colors;
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final availableHeight = screenHeight - bottomInset;
 
     return AnimatedPadding(
       padding: EdgeInsets.only(bottom: bottomInset),
@@ -429,9 +431,11 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
       curve: Motion.curve,
       child: Container(
         constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * 0.90,
+          maxHeight: bottomInset > 0
+              ? (availableHeight > 240 ? availableHeight - 16 : availableHeight)
+              : screenHeight * 0.90,
         ),
-        padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -476,7 +480,9 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
             ],
             Expanded(
               child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                 keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: const EdgeInsets.only(bottom: 40),
                 child: switch (tabIndex) {
                   0 => _buildJoinTab(c),
                   1 => _buildCreateTab(c),
@@ -490,7 +496,7 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
     );
   }
 
-  Widget _buildJoinTab(AulaColors c) {
+  Widget _buildJoinTab(MyClassColors c) {
     if (loadingData && universities.isEmpty) {
       return const Padding(
         padding: EdgeInsets.all(32),
@@ -784,7 +790,7 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
     );
   }
 
-  Widget _buildCreateTab(AulaColors c) {
+  Widget _buildCreateTab(MyClassColors c) {
     if (createSuccess) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 24),
@@ -1010,7 +1016,7 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
     );
   }
 
-  Widget _buildOwnerTab(AulaColors c) {
+  Widget _buildOwnerTab(MyClassColors c) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1086,6 +1092,8 @@ class _UniversitySearchSheetState extends State<_UniversitySearchSheet> {
   Widget build(BuildContext context) {
     final c = context.colors;
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final availableHeight = screenHeight - bottomInset;
     final filtered = widget.universities.where((u) {
       if (_query.isEmpty) return true;
       final q = _query.toLowerCase().trim();
@@ -1098,9 +1106,11 @@ class _UniversitySearchSheetState extends State<_UniversitySearchSheet> {
       curve: Motion.curve,
       child: Container(
         constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * 0.85,
+          maxHeight: bottomInset > 0
+              ? (availableHeight > 240 ? availableHeight - 16 : availableHeight)
+              : screenHeight * 0.85,
         ),
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

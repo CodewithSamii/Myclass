@@ -1,20 +1,20 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sami_p/core/models.dart';
-import 'package:sami_p/core/clock.dart';
-import 'package:sami_p/demo/demo_controller.dart';
-import 'package:sami_p/demo/mock_store.dart';
-import 'package:sami_p/demo/mock_academic_structure_repository.dart';
-import 'package:sami_p/demo/mock_event_repository.dart';
-import 'package:sami_p/demo/mock_personal_repositories.dart';
-import 'package:sami_p/demo/mock_schedule_repository.dart';
-import 'package:sami_p/demo/mock_search_repository.dart';
-import 'package:sami_p/demo/fixtures.dart';
-import 'package:sami_p/features/home/models/agenda_projection.dart';
-import 'package:sami_p/features/section_admin/bloc/event_editor_bloc.dart';
-import 'package:sami_p/features/search/bloc/search_bloc.dart';
-import 'package:sami_p/features/tasks/models/task_projection.dart';
-import 'package:sami_p/features/tasks/bloc/tasks_bloc.dart';
-import 'package:sami_p/features/schedule/bloc/schedule_bloc.dart';
+import 'package:myclass/core/models.dart';
+import 'package:myclass/core/clock.dart';
+import 'package:myclass/demo/demo_controller.dart';
+import 'package:myclass/demo/mock_store.dart';
+import 'package:myclass/demo/mock_academic_structure_repository.dart';
+import 'package:myclass/demo/mock_event_repository.dart';
+import 'package:myclass/demo/mock_personal_repositories.dart';
+import 'package:myclass/demo/mock_schedule_repository.dart';
+import 'package:myclass/demo/mock_search_repository.dart';
+import 'package:myclass/demo/fixtures.dart';
+import 'package:myclass/features/home/models/agenda_projection.dart';
+import 'package:myclass/features/section_admin/bloc/event_editor_bloc.dart';
+import 'package:myclass/features/search/bloc/search_bloc.dart';
+import 'package:myclass/features/tasks/models/task_projection.dart';
+import 'package:myclass/features/tasks/bloc/tasks_bloc.dart';
+import 'package:myclass/features/schedule/bloc/schedule_bloc.dart';
 import 'support/harness.dart';
 
 void main() {
@@ -38,7 +38,7 @@ void main() {
         repo.verifyAccess(section, 'wrong'),
         throwsA(isA<AppFailure>()),
       );
-      final grant = await repo.verifyAccess(section, ' aula64 ');
+      final grant = await repo.verifyAccess(section, ' myclass64 ');
       expect(grant.sectionId, section);
       expect(grant.token, 'mock-opaque-grant');
     },

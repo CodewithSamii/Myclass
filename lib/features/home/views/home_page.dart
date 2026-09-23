@@ -48,7 +48,6 @@ class HomePage extends StatelessWidget {
       children: [
         PageHeader(
           'MyClass',
-          eyebrow: 'Metropolitan University',
           subtitle: 'Welcome. Select or join your classroom to access routines, schedules, and notices.',
           actions: [
             IconButton(

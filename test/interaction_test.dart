@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sami_p/core/models.dart';
-import 'package:sami_p/shared/workspace_shell.dart';
-import 'package:sami_p/features/events/bloc/events_bloc.dart';
-import 'package:sami_p/features/events/views/event_detail_page.dart';
-import 'package:sami_p/features/notes/bloc/notes_bloc.dart';
-import 'package:sami_p/features/profile/bloc/profile_bloc.dart';
-import 'package:sami_p/features/tasks/bloc/tasks_bloc.dart';
-import 'package:sami_p/features/schedule/bloc/schedule_bloc.dart';
-import 'package:sami_p/features/section_admin/views/event_editor_page.dart';
-import 'package:sami_p/features/campus/views/faculty_page.dart';
-import 'package:sami_p/features/campus/views/bus_page.dart';
-import 'package:sami_p/features/home/views/home_page.dart';
-import 'package:sami_p/demo/demo_controller.dart';
-import 'package:sami_p/demo/fixtures.dart';
+import 'package:myclass/core/models.dart';
+import 'package:myclass/shared/workspace_shell.dart';
+import 'package:myclass/features/events/bloc/events_bloc.dart';
+import 'package:myclass/features/events/views/event_detail_page.dart';
+import 'package:myclass/features/notes/bloc/notes_bloc.dart';
+import 'package:myclass/features/profile/bloc/profile_bloc.dart';
+import 'package:myclass/features/tasks/bloc/tasks_bloc.dart';
+import 'package:myclass/features/schedule/bloc/schedule_bloc.dart';
+import 'package:myclass/features/section_admin/views/event_editor_page.dart';
+import 'package:myclass/features/campus/views/faculty_page.dart';
+import 'package:myclass/features/campus/views/bus_page.dart';
+import 'package:myclass/features/home/views/home_page.dart';
+import 'package:myclass/demo/demo_controller.dart';
+import 'package:myclass/demo/fixtures.dart';
 import 'support/harness.dart';
 
 void main() {

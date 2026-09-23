@@ -27,8 +27,8 @@ abstract final class Metrics {
 }
 
 @immutable
-class AulaColors extends ThemeExtension<AulaColors> {
-  const AulaColors({
+class MyClassColors extends ThemeExtension<MyClassColors> {
+  const MyClassColors({
     required this.canvas,
     required this.surface,
     required this.subtle,
@@ -62,7 +62,7 @@ class AulaColors extends ThemeExtension<AulaColors> {
       amberBg,
       red,
       redBg;
-  static const light = AulaColors(
+  static const light = MyClassColors(
     canvas: Color(0xFFF6F6F2),
     surface: Color(0xFFFFFFFF),
     subtle: Color(0xFFEDEEE8),
@@ -80,7 +80,7 @@ class AulaColors extends ThemeExtension<AulaColors> {
     red: Color(0xFF9B5047),
     redBg: Color(0xFFF4E7E2),
   );
-  static const dark = AulaColors(
+  static const dark = MyClassColors(
     canvas: Color(0xFF101410),
     surface: Color(0xFF1B201B),
     subtle: Color(0xFF252D25),
@@ -99,12 +99,12 @@ class AulaColors extends ThemeExtension<AulaColors> {
     redBg: Color(0xFF3B2926),
   );
   @override
-  AulaColors copyWith() => this;
+  MyClassColors copyWith() => this;
   @override
-  AulaColors lerp(covariant AulaColors? other, double t) {
+  MyClassColors lerp(covariant MyClassColors? other, double t) {
     if (other == null) return this;
     Color l(Color a, Color b) => Color.lerp(a, b, t)!;
-    return AulaColors(
+    return MyClassColors(
       canvas: l(canvas, other.canvas),
       surface: l(surface, other.surface),
       subtle: l(subtle, other.subtle),
@@ -125,14 +125,16 @@ class AulaColors extends ThemeExtension<AulaColors> {
   }
 }
 
+typedef AulaColors = MyClassColors;
+
 extension DesignContext on BuildContext {
-  AulaColors get colors => Theme.of(this).extension<AulaColors>()!;
+  MyClassColors get colors => Theme.of(this).extension<MyClassColors>()!;
   TextTheme get type => Theme.of(this).textTheme;
   bool get wide => MediaQuery.sizeOf(this).width >= 720;
 }
 
-ThemeData aulaTheme(Brightness brightness) {
-  final c = brightness == Brightness.dark ? AulaColors.dark : AulaColors.light;
+ThemeData myClassTheme(Brightness brightness) {
+  final c = brightness == Brightness.dark ? MyClassColors.dark : MyClassColors.light;
   TextStyle style(
     double size,
     FontWeight weight, {
@@ -262,3 +264,5 @@ ThemeData aulaTheme(Brightness brightness) {
     ),
   );
 }
+
+ThemeData aulaTheme(Brightness brightness) => myClassTheme(brightness);

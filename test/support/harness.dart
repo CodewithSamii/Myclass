@@ -6,10 +6,10 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:sami_p/app.dart';
-import 'package:sami_p/core/dependencies.dart';
-import 'package:sami_p/core/models.dart';
-import 'package:sami_p/shared/workspace_shell.dart';
+import 'package:myclass/app.dart';
+import 'package:myclass/core/dependencies.dart';
+import 'package:myclass/core/models.dart';
+import 'package:myclass/shared/workspace_shell.dart';
 
 UserProfile sampleProfile({
   UserRole role = UserRole.student,
@@ -63,8 +63,8 @@ Future<AppDependencies> boot(
   SharedPreferences.setMockInitialValues(
     signedIn
         ? {
-            'aula.signedIn': true,
-            'aula.profile.demo-student': jsonEncode(
+            'myclass.signedIn': true,
+            'myclass.profile.demo-student': jsonEncode(
               sampleProfile(role: role, appearance: appearance).toJson(),
             ),
           }
@@ -75,7 +75,7 @@ Future<AppDependencies> boot(
   await tester.pumpWidget(
     RepaintBoundary(
       key: const Key('capture'),
-      child: AulaApp(dependencies: d),
+      child: MyClassApp(dependencies: d),
     ),
   );
   await settle(tester);

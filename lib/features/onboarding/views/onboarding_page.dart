@@ -239,15 +239,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     color: context.colors.secondary,
                   ),
                 ),
-                const SizedBox(height: 20),
-                const Divider(),
-                const SizedBox(height: 16),
-                Text(
-                  'Metropolitan University',
-                  style: context.type.bodyMedium?.copyWith(
-                    color: context.colors.secondary,
-                  ),
-                ),
               ],
             ),
           ),

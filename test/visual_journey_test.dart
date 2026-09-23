@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sami_p/core/models.dart';
-import 'package:sami_p/features/events/views/event_detail_page.dart';
-import 'package:sami_p/features/campus/views/bus_page.dart';
-import 'package:sami_p/features/campus/views/faculty_page.dart';
-import 'package:sami_p/features/schedule/views/routine_page.dart';
-import 'package:sami_p/features/profile/views/notification_page.dart';
-import 'package:sami_p/features/notes/views/notes_page.dart';
-import 'package:sami_p/features/section_admin/views/event_editor_page.dart';
-import 'package:sami_p/features/search/views/search_page.dart';
-import 'package:sami_p/demo/fixtures.dart';
+import 'package:myclass/core/models.dart';
+import 'package:myclass/features/events/views/event_detail_page.dart';
+import 'package:myclass/features/campus/views/bus_page.dart';
+import 'package:myclass/features/campus/views/faculty_page.dart';
+import 'package:myclass/features/schedule/views/routine_page.dart';
+import 'package:myclass/features/profile/views/notification_page.dart';
+import 'package:myclass/features/notes/views/notes_page.dart';
+import 'package:myclass/features/section_admin/views/event_editor_page.dart';
+import 'package:myclass/features/search/views/search_page.dart';
+import 'package:myclass/demo/fixtures.dart';
 import 'support/harness.dart';
 
 void main() {

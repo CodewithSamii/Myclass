@@ -140,8 +140,8 @@ class _Workspace extends StatelessWidget {
         builder: (context, s) => MaterialApp(
           title: 'MyClass',
           debugShowCheckedModeBanner: false,
-          theme: aulaTheme(Brightness.light),
-          darkTheme: aulaTheme(Brightness.dark),
+          theme: myClassTheme(Brightness.light),
+          darkTheme: myClassTheme(Brightness.dark),
           themeMode: switch (s.profile.appearance) {
             Appearance.system => ThemeMode.system,
             Appearance.light => ThemeMode.light,

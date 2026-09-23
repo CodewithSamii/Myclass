@@ -126,6 +126,7 @@ class _SetRoutinePageState extends State<SetRoutinePage> {
                   const SizedBox(height: 6),
                   TextField(
                     controller: roomController,
+                    scrollPadding: const EdgeInsets.only(bottom: 100),
                     decoration: const InputDecoration(
                       hintText: 'e.g. 402 or Lab 2',
                       prefixIcon: Icon(CupertinoIcons.location, size: 18),

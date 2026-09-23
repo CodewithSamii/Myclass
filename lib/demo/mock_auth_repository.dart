@@ -6,18 +6,19 @@ class MockAuthRepository implements AuthRepository {
   final SharedPreferences preferences;
   @override
   Future<AuthIdentity?> restore() async =>
-      preferences.getBool('aula.signedIn') == true
+      (preferences.getBool('myclass.signedIn') ?? preferences.getBool('aula.signedIn')) == true
       ? const AuthIdentity('demo-student', 'student@example.edu')
       : null;
   @override
   Future<AuthIdentity> signInWithGoogle() async {
     await Future<void>.delayed(const Duration(milliseconds: 600));
-    await preferences.setBool('aula.signedIn', true);
+    await preferences.setBool('myclass.signedIn', true);
     return const AuthIdentity('demo-student', 'student@example.edu');
   }
 
   @override
   Future<void> signOut() async {
+    await preferences.setBool('myclass.signedIn', false);
     await preferences.setBool('aula.signedIn', false);
   }
 }

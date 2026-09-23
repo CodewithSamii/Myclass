@@ -67,6 +67,7 @@ class _NoteEditorState extends State<NoteEditor> {
           TextField(
             controller: text,
             autofocus: false,
+            scrollPadding: const EdgeInsets.only(bottom: 120),
             minLines: 4,
             maxLines: 8,
             textCapitalization: TextCapitalization.sentences,

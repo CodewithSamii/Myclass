@@ -12,11 +12,13 @@ class MockProfileRepository implements ProfileRepository {
   Future<UserProfile?> load(String uid) async {
     await store.delay();
     if (store.profile != null) return store.profile;
-    final raw = preferences.getString('aula.profile.$uid');
+    final raw = preferences.getString('myclass.profile.$uid') ??
+        preferences.getString('aula.profile.$uid');
     if (raw != null) {
       try {
         store.profile = UserProfile.fromJson(jsonDecode(raw));
       } catch (_) {
+        await preferences.remove('myclass.profile.$uid');
         await preferences.remove('aula.profile.$uid');
       }
     }
@@ -40,7 +42,7 @@ class MockProfileRepository implements ProfileRepository {
     }
     store.profile = profile;
     await preferences.setString(
-      'aula.profile.${profile.uid}',
+      'myclass.profile.${profile.uid}',
       jsonEncode(profile.toJson()),
     );
     store.notify();

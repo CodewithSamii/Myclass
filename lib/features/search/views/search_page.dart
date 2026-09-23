@@ -50,6 +50,7 @@ class _SearchPageState extends State<SearchPage> {
           TextField(
             controller: controller,
             autofocus: true,
+            scrollPadding: const EdgeInsets.only(bottom: 100),
             onChanged: (v) =>
                 context.read<SearchBloc>().add(SearchQueryChanged(v)),
             decoration: InputDecoration(
