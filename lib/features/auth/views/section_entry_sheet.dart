@@ -389,7 +389,7 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
       setState(() => errorMessage = 'Please enter the owner master key.');
       return;
     }
-    if (pass != 'owner' && pass != 'admin' && pass != '123456') {
+    if (pass != 'yyoyyo' && pass != 'owner' && pass != 'admin' && pass != '123456') {
       setState(() => errorMessage = 'Invalid master key.');
       return;
     }
@@ -1045,7 +1045,7 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
           scrollPadding: const EdgeInsets.only(bottom: 80),
           obscureText: true,
           decoration: const InputDecoration(
-            hintText: 'Enter owner master passkey (e.g. owner)',
+            hintText: 'Enter owner master passkey (e.g. yyoyyo)',
             prefixIcon: Icon(CupertinoIcons.lock_shield, size: 18),
           ),
         ),
