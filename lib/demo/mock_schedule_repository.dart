@@ -82,9 +82,45 @@ class MockScheduleRepository implements ScheduleRepository {
   }
 
   @override
+  Future<List<TimeSlot>> timeSlots(String sectionId) async {
+    await store.delay();
+    return List.unmodifiable(store.timeSlotsFor(sectionId));
+  }
+
+  @override
+  Future<void> saveTimeSlots(String sectionId, List<TimeSlot> slots) async {
+    await store.checkWrite(shared: true, section: sectionId);
+    store.timeSlots[sectionId] = List.from(slots);
+    if (!store.demo.state.offline) store.updatedAt = store.demo.now;
+    store.notify();
+  }
+
+  @override
+  Future<void> saveRoutine(String sectionId, List<ClassSession> sessions) async {
+    await store.checkWrite(shared: true, section: sectionId);
+    store.routines[sectionId] = List.from(sessions);
+    store.updates
+        .putIfAbsent(sectionId, () => [])
+        .insert(
+          0,
+          UpdateFeedItem(
+            id: 'routine-bulk-${DateTime.now().microsecondsSinceEpoch}',
+            eventId: '',
+            sessionId: '',
+            title: 'Class Routine updated',
+            detail: 'Weekly schedule has been updated by class admin.',
+            at: store.demo.now,
+          ),
+        );
+    if (!store.demo.state.offline) store.updatedAt = store.demo.now;
+    store.notify();
+  }
+
+  @override
   Future<void> refresh() async {
     await store.delay();
     if (!store.demo.state.offline) store.updatedAt = store.demo.now;
     store.notify();
   }
 }
+

@@ -39,7 +39,19 @@ class AuthSetupSaved extends AuthEvent {
   final SectionGrant grant;
 }
 
+class AuthSectionLoggedIn extends AuthEvent {
+  AuthSectionLoggedIn({
+    required this.name,
+    required this.membership,
+    required this.grant,
+  });
+  final String name;
+  final SectionMembership membership;
+  final SectionGrant grant;
+}
+
 class AuthLoggedOut extends AuthEvent {}
+
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   AuthBloc(this.auth, this.profiles)
@@ -128,10 +140,31 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         );
       }
     });
+    on<AuthSectionLoggedIn>((e, emit) async {
+      emit(AuthState(state.phase, identity: state.identity, profile: state.profile, busy: true));
+      try {
+        final uid = state.identity?.uid ?? 'user-${DateTime.now().millisecondsSinceEpoch}';
+        final email = state.identity?.email ?? '${e.name.toLowerCase().replaceAll(RegExp(r'\s+'), '')}@example.com';
+        final id = state.identity ?? AuthIdentity(uid, email);
+        final p = UserProfile(
+
+          uid: id.uid,
+          name: e.name.trim(),
+          email: id.email,
+          memberships: [e.membership.withRole(e.grant.role)],
+          activeSectionId: e.membership.sectionId,
+        );
+        await profiles.save(p, grant: e.grant);
+        emit(AuthState(AuthPhase.ready, identity: id, profile: p));
+      } catch (err) {
+        emit(AuthState(state.phase, identity: state.identity, profile: state.profile, error: err.toString()));
+      }
+    });
     on<AuthLoggedOut>((e, emit) async {
       await auth.signOut();
-      emit(const AuthState(AuthPhase.returning));
+      emit(const AuthState(AuthPhase.introduction));
     });
+
   }
   final AuthRepository auth;
   final ProfileRepository profiles;

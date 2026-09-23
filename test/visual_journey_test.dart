@@ -19,22 +19,22 @@ void main() {
     tester,
   ) async {
     final d = await boot(tester);
-    expect(find.text('Monday, 21'), findsOneWidget);
-    expect(find.text('HAPPENING NOW'), findsOneWidget);
-    expect(find.text('Artificial Intelligence'), findsWidgets);
-    await capture(tester, '01-home-light');
-    for (final pair in [
-      ('Schedule', '02-schedule-week'),
-      ('Tasks', '03-tasks'),
-      ('Campus', '04-campus'),
-      ('Profile', '05-profile'),
-    ]) {
-      await tester.tap(find.text(pair.$1).last);
+    expect(find.text('Schedule'), findsWidgets);
+    await capture(tester, '01-schedule-light');
+    for (final tab in ['Tasks', 'Campus', 'Profile', 'Schedule']) {
+      await tester.tap(find.text(tab).last);
       await settle(tester);
-      await capture(tester, pair.$2);
     }
+    // Open burger drawer and navigate to Home
+    final scaffoldState = tester.firstState<ScaffoldState>(find.byType(Scaffold));
+    scaffoldState.openDrawer();
+    await settle(tester);
+    await capture(tester, '02-drawer-menu');
     await tester.tap(find.text('Home').last);
     await settle(tester);
+    await capture(tester, '03-home-via-drawer');
+    await back(tester);
+
     await push(tester, const EventDetailPage(id: 'bsc-cse-64-I-network-viva'));
     await capture(tester, '06-event-detail');
     await back(tester);
@@ -72,24 +72,26 @@ void main() {
       role: UserRole.sectionAdmin,
       appearance: Appearance.dark,
     );
-    await capture(tester, '15-home-dark');
-    await tester.tap(find.text('Schedule').last);
+    await capture(tester, '15-schedule-dark');
+    final scaffoldState = tester.firstState<ScaffoldState>(find.byType(Scaffold));
+    scaffoldState.openDrawer();
     await settle(tester);
-    await capture(tester, '16-schedule-dark');
-    await tester.tap(find.text('Month'));
+    expect(find.text('ADMIN CONTROLS'), findsOneWidget);
+    await capture(tester, '16-drawer-admin-dark');
+    await tester.tap(find.text('Set Slots'));
     await settle(tester);
-    await capture(tester, '17-month-dark');
+    await capture(tester, '17-set-slots-dark');
+    await back(tester);
     await push(tester, const EventEditorPage());
     await capture(tester, '18-event-editor-dark');
     await back(tester);
     await finish(tester, d);
   });
-  testWidgets('first launch and tablet render', (tester) async {
+  testWidgets('first launch guest state and tablet render', (tester) async {
     final d = await boot(tester, signedIn: false);
-    await capture(tester, '19-introduction');
-    await tester.tap(find.text('Get started'));
-    await settle(tester);
-    await capture(tester, '20-onboarding');
+    await capture(tester, '19-guest-home');
+    expect(find.text('Home'), findsWidgets);
+    expect(find.text('Join or Create Classroom'), findsWidgets);
     await finish(tester, d);
     final tablet = await boot(tester, size: const Size(1100, 900));
     await capture(tester, '21-tablet');

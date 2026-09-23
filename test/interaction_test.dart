@@ -20,54 +20,34 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(loadFonts);
   testWidgets(
-    'onboarding verifies section, mock Google saves profile, and sign out returns to login',
+    'section entry modal verifies password, logs into section, and switch section logs out',
     (tester) async {
       final d = await boot(tester, signedIn: false);
-      await tester.tap(find.text('Get started'));
+      expect(find.text('Enter Classroom / Join'), findsWidgets);
+      await tester.tap(find.text('Enter Classroom / Join').first);
       await settle(tester);
-      await tester.enterText(find.byType(TextFormField), 'Navid');
-      await tester.tap(find.text('Choose program type'));
+      await tester.pump(const Duration(milliseconds: 600));
       await settle(tester);
-      await tester.tap(find.text('Undergraduate'));
+      await capture(tester, '22-section-entry-sheet');
+
+      // Enter wrong password
+      await tester.enterText(find.byType(TextField).last, 'wrong');
+      await tester.ensureVisible(find.widgetWithText(FilledButton, 'Enter Classroom').last);
       await settle(tester);
-      await tester.tap(find.text('Choose department'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Enter Classroom').last);
       await settle(tester);
-      await tester.tap(find.text('Computer Science & Engineering'));
+      expect(find.textContaining('Incorrect Student Password'), findsOneWidget);
+
+      // Enter valid student password ('123')
+      await tester.enterText(find.byType(TextField).last, '123');
+      await tester.ensureVisible(find.widgetWithText(FilledButton, 'Enter Classroom').last);
       await settle(tester);
-      await tester.tap(find.text('Choose program'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Enter Classroom').last);
       await settle(tester);
-      await tester.tap(find.text('B.Sc. in Computer Science & Engineering'));
-      await settle(tester);
-      await tester.ensureVisible(find.text('Choose batch'));
-      await tester.tap(find.text('Choose batch'));
-      await settle(tester);
-      await tester.tap(find.text('Batch 64'));
-      await settle(tester);
-      await tester.ensureVisible(find.text('Choose section'));
-      await tester.tap(find.text('Choose section'));
-      await settle(tester);
-      await tester.enterText(find.byType(TextField).last, 'Section I');
-      await settle(tester);
-      await tester.tap(find.text('Section I').last);
-      await settle(tester);
-      await tester.ensureVisible(find.text('Continue'));
-      await tester.tap(find.text('Continue'));
-      await settle(tester);
-      await capture(tester, '22-section-verification');
-      await tester.enterText(find.byType(TextField), 'WRONG');
-      await tester.ensureVisible(find.text('Join this section'));
-      await tester.tap(find.text('Join this section'));
-      await settle(tester);
-      expect(find.textContaining('That code did not match'), findsOneWidget);
-      await tester.enterText(find.byType(TextField), 'AULA64');
-      await tester.tap(find.text('Join this section'));
-      await settle(tester);
-      await capture(tester, '23-save-setup');
-      await tester.ensureVisible(find.text('Continue with Google'));
-      await tester.tap(find.text('Continue with Google'));
-      await settle(tester);
-      expect(find.text('HAPPENING NOW'), findsOneWidget);
-      expect(find.text('Monday, 21'), findsOneWidget);
+      await capture(tester, '23-logged-in-schedule');
+
+      // Check Schedule tab is now visible and active
+      expect(find.text('Schedule'), findsWidgets);
       expect(
         tester
             .element(find.byType(WorkspaceShell))
@@ -78,23 +58,16 @@ void main() {
             .departmentId,
         'cse',
       );
-      await tester.tap(find.text('Profile').last);
+
+      // Open drawer to Switch Section / Logout
+      final scaffoldState = tester.firstState<ScaffoldState>(find.byType(Scaffold));
+      scaffoldState.openDrawer();
       await settle(tester);
-      await tester.drag(
-        find.byKey(const PageStorageKey('profile')),
-        const Offset(0, -650),
-      );
+      await tester.tap(find.text('Switch Section / Logout'));
       await settle(tester);
-      await tester.ensureVisible(find.text('Sign out'));
-      await settle(tester);
-      await tester.tap(find.text('Sign out'));
-      await settle(tester);
-      await tester.tap(find.text('Sign out').last);
-      await settle(tester);
-      expect(find.text('Back to your space.'), findsOneWidget);
-      await tester.tap(find.text('Continue with Google'));
-      await settle(tester);
-      expect(find.text('HAPPENING NOW'), findsOneWidget);
+
+      // Now back to guest mode
+      expect(find.text('Join or Create Classroom'), findsWidgets);
       await finish(tester, d);
     },
   );
@@ -273,6 +246,12 @@ void main() {
     'all home scenarios preserve readable data with offline and missing routine states',
     (tester) async {
       final d = await boot(tester);
+      final scaffoldState = tester.firstState<ScaffoldState>(find.byType(Scaffold));
+      scaffoldState.openDrawer();
+      await settle(tester);
+      await tester.tap(find.text('Home').last);
+      await settle(tester);
+
       for (final scenario in DemoScenario.values) {
         d.demo.scenario(scenario);
         await settle(tester);

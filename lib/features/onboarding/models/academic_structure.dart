@@ -35,15 +35,89 @@ class Batch extends Equatable {
   List<Object?> get props => [id, programId, label];
 }
 
+enum SectionStatus { pendingApproval, approved, rejected }
+
 class Section extends Equatable {
-  const Section(this.id, this.batchId, this.label, {this.memberCount = 42});
+  const Section(
+    this.id,
+    this.batchId,
+    this.label, {
+    this.memberCount = 42,
+    this.adminId,
+    this.creatorName,
+    this.adminPassword,
+    this.studentPassword,
+    this.status = SectionStatus.approved,
+    this.createdAt,
+    this.departmentId,
+    this.departmentName,
+    this.batchName,
+  });
+
   final String id, batchId, label;
   final int memberCount;
+  final String? adminId;
+  final String? creatorName;
+  final String? adminPassword;
+  final String? studentPassword;
+  final SectionStatus status;
+  final DateTime? createdAt;
+  final String? departmentId;
+  final String? departmentName;
+  final String? batchName;
+
+  bool get isApproved => status == SectionStatus.approved;
+  bool get isPending => status == SectionStatus.pendingApproval;
+
+  Section copyWith({
+    String? id,
+    String? batchId,
+    String? label,
+    int? memberCount,
+    String? adminId,
+    String? creatorName,
+    String? adminPassword,
+    String? studentPassword,
+    SectionStatus? status,
+    DateTime? createdAt,
+    String? departmentId,
+    String? departmentName,
+    String? batchName,
+  }) => Section(
+    id ?? this.id,
+    batchId ?? this.batchId,
+    label ?? this.label,
+    memberCount: memberCount ?? this.memberCount,
+    adminId: adminId ?? this.adminId,
+    creatorName: creatorName ?? this.creatorName,
+    adminPassword: adminPassword ?? this.adminPassword,
+    studentPassword: studentPassword ?? this.studentPassword,
+    status: status ?? this.status,
+    createdAt: createdAt ?? this.createdAt,
+    departmentId: departmentId ?? this.departmentId,
+    departmentName: departmentName ?? this.departmentName,
+    batchName: batchName ?? this.batchName,
+  );
+
   @override
-  List<Object?> get props => [id, batchId, label, memberCount];
+  List<Object?> get props => [
+    id,
+    batchId,
+    label,
+    memberCount,
+    adminId,
+    creatorName,
+    adminPassword,
+    studentPassword,
+    status,
+    createdAt,
+    departmentId,
+    departmentName,
+    batchName,
+  ];
 }
 
-enum UserRole { student, sectionAdmin, departmentAdmin, universityAdmin }
+enum UserRole { student, sectionAdmin, departmentAdmin, universityAdmin, myClassOwner }
 
 class SectionMembership extends Equatable {
   const SectionMembership({
@@ -64,7 +138,14 @@ class SectionMembership extends Equatable {
       batchName,
       sectionName;
   final UserRole role;
-  bool get canManage => role != UserRole.student;
+  bool get canManage =>
+      role == UserRole.sectionAdmin ||
+      role == UserRole.departmentAdmin ||
+      role == UserRole.universityAdmin ||
+      role == UserRole.myClassOwner;
+  bool get isOwner => role == UserRole.myClassOwner;
+  bool get isAdmin =>
+      role == UserRole.sectionAdmin || role == UserRole.myClassOwner;
   String get label => '$batchName · $sectionName';
   SectionMembership withRole(UserRole value) => SectionMembership(
     sectionId: sectionId,
@@ -112,6 +193,8 @@ class SectionMembership extends Equatable {
 
 /// Opaque backend-issued capability. A section secret is never part of a model.
 class SectionGrant {
-  const SectionGrant(this.sectionId, this.token);
+  const SectionGrant(this.sectionId, this.token, {this.role = UserRole.student});
   final String sectionId, token;
+  final UserRole role;
 }
+

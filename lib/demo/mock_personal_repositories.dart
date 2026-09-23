@@ -32,7 +32,7 @@ class MockProfileRepository implements ProfileRepository {
     if (store.profile?.activeSectionId != profile.activeSectionId &&
         (grant == null ||
             grant.sectionId != profile.activeSectionId ||
-            grant.token != 'mock-opaque-grant')) {
+            grant.token.isEmpty)) {
       throw const AppFailure(
         'Verify your section before saving your setup.',
         phase: LoadPhase.permissionDenied,

@@ -5,6 +5,47 @@ import 'fixtures.dart';
 class MockAcademicStructureRepository implements AcademicStructureRepository {
   Future<void> _delay() =>
       Future<void>.delayed(const Duration(milliseconds: 180));
+
+  // Dynamic in-memory store for classrooms
+  final Map<String, Section> _sectionStore = {
+    'bsc-cse-64-A': const Section(
+      'bsc-cse-64-A',
+      'bsc-cse-64',
+      'Section A',
+      adminPassword: 'admin',
+      studentPassword: '123',
+      creatorName: 'Tanvir Ahmed',
+      status: SectionStatus.approved,
+      departmentId: 'cse',
+      departmentName: 'Computer Science & Engineering',
+      batchName: 'Batch 64',
+    ),
+    'bsc-cse-64-B': const Section(
+      'bsc-cse-64-B',
+      'bsc-cse-64',
+      'Section B',
+      adminPassword: 'admin',
+      studentPassword: '123',
+      creatorName: 'Samira Chowdhury',
+      status: SectionStatus.approved,
+      departmentId: 'cse',
+      departmentName: 'Computer Science & Engineering',
+      batchName: 'Batch 64',
+    ),
+    'bsc-cse-64-C': const Section(
+      'bsc-cse-64-C',
+      'bsc-cse-64',
+      'Section C',
+      adminPassword: 'admin',
+      studentPassword: '123',
+      creatorName: 'Arif Hasan',
+      status: SectionStatus.approved,
+      departmentId: 'cse',
+      departmentName: 'Computer Science & Engineering',
+      batchName: 'Batch 64',
+    ),
+  };
+
   @override
   Future<List<Department>> departments(String programType) async {
     await _delay();
@@ -40,23 +81,185 @@ class MockAcademicStructureRepository implements AcademicStructureRepository {
   @override
   Future<List<Section>> sections(String batchId) async {
     await _delay();
+    final custom = _sectionStore.values.where((s) => s.batchId == batchId).toList();
+    if (custom.isNotEmpty) return custom;
     return [
       for (final s in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'])
-        Section('$batchId-$s', batchId, 'Section $s'),
+        Section(
+          '$batchId-$s',
+          batchId,
+          'Section $s',
+          adminPassword: 'admin',
+          studentPassword: '123',
+          status: SectionStatus.approved,
+        ),
     ];
   }
 
   @override
-  Future<SectionGrant> verifyAccess(String sectionId, String code) async {
-    await Future<void>.delayed(const Duration(milliseconds: 550));
-    // Public fixture credential only, not a production password or client-side secret.
-    // Replace this adapter with a trusted backend callable that returns an opaque grant.
-    final normalized = code.trim().toUpperCase();
-    if (normalized != 'MYCLASS64' && normalized != 'CLASS64' && normalized != 'AULA64') {
-      throw const AppFailure(
-        'That code did not match. Check it with your class representative and try again.',
+  Future<List<Section>> approvedSections(String batchId) async {
+    await _delay();
+    final all = await sections(batchId);
+    return all.where((s) => s.status == SectionStatus.approved).toList();
+  }
+
+  @override
+  Future<List<Section>> pendingSections() async {
+    await _delay();
+    return _sectionStore.values
+        .where((s) => s.status == SectionStatus.pendingApproval)
+        .toList();
+  }
+
+  @override
+  Future<Section> createSection({
+    required String departmentId,
+    required String departmentName,
+    required String batchId,
+    required String batchName,
+    required String sectionName,
+    required String adminPassword,
+    required String studentPassword,
+    required String creatorName,
+  }) async {
+    await _delay();
+    final cleanSection = sectionName.trim();
+    final slug = cleanSection.toLowerCase().replaceAll(RegExp(r'\s+'), '-');
+    final id = '$batchId-$slug';
+
+    final section = Section(
+      id,
+      batchId,
+      cleanSection.startsWith('Section') ? cleanSection : 'Section $cleanSection',
+      adminPassword: adminPassword.trim(),
+      studentPassword: studentPassword.trim(),
+      creatorName: creatorName.trim(),
+      status: SectionStatus.pendingApproval,
+      createdAt: DateTime.now(),
+      departmentId: departmentId,
+      departmentName: departmentName,
+      batchName: batchName,
+    );
+
+    _sectionStore[id] = section;
+    return section;
+  }
+
+  @override
+  Future<void> approveSection(String sectionId) async {
+    await _delay();
+    final existing = _sectionStore[sectionId];
+    if (existing != null) {
+      _sectionStore[sectionId] = existing.copyWith(
+        status: SectionStatus.approved,
       );
     }
-    return SectionGrant(sectionId, 'mock-opaque-grant');
+  }
+
+  @override
+  Future<void> rejectSection(String sectionId) async {
+    await _delay();
+    final existing = _sectionStore[sectionId];
+    if (existing != null) {
+      _sectionStore[sectionId] = existing.copyWith(
+        status: SectionStatus.rejected,
+      );
+    }
+  }
+
+  @override
+  Future<SectionGrant> verifyAccess(String sectionId, String code) async {
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    final cleanCode = code.trim();
+    final section = _sectionStore[sectionId];
+
+    if (section != null) {
+      if (section.status == SectionStatus.pendingApproval) {
+        throw const AppFailure(
+          'This classroom is pending approval from the MyClass Owner.',
+        );
+      }
+      if (cleanCode == section.adminPassword) {
+        return SectionGrant(
+          sectionId,
+          'mock-admin-token',
+          role: UserRole.sectionAdmin,
+        );
+      }
+      if (cleanCode == section.studentPassword) {
+        return SectionGrant(
+          sectionId,
+          'mock-student-token',
+          role: UserRole.student,
+        );
+      }
+    }
+
+    // Default fallback for fixture classrooms
+    if (cleanCode == 'admin' || cleanCode == 'admin123') {
+      return SectionGrant(
+        sectionId,
+        'mock-admin-token',
+        role: UserRole.sectionAdmin,
+      );
+    }
+    if (cleanCode == '123' ||
+        cleanCode == '123456' ||
+        cleanCode.toUpperCase() == 'MYCLASS64' ||
+        cleanCode.toUpperCase() == 'AULA64') {
+      return SectionGrant(
+        sectionId,
+        'mock-opaque-grant',
+        role: UserRole.student,
+      );
+    }
+
+    throw const AppFailure(
+      'That password did not match. Please verify the credentials with your class representative.',
+    );
+  }
+
+  @override
+  Future<SectionGrant> verifyRoleAccess(
+    String sectionId, {
+    required bool isAdmin,
+    required String password,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    final cleanPassword = password.trim();
+    final section = _sectionStore[sectionId];
+
+    if (section != null && section.status == SectionStatus.pendingApproval) {
+      throw const AppFailure(
+        'This classroom is pending approval from the MyClass Owner.',
+      );
+    }
+
+    if (isAdmin) {
+      final expectedAdminPass = section?.adminPassword ?? 'admin';
+      if (cleanPassword == expectedAdminPass || cleanPassword == 'admin123' || cleanPassword == 'admin') {
+        return SectionGrant(
+          sectionId,
+          'mock-admin-token-${DateTime.now().millisecondsSinceEpoch}',
+          role: UserRole.sectionAdmin,
+        );
+      }
+      throw const AppFailure(
+        'Incorrect Admin Password for this classroom. Please check and try again.',
+      );
+    } else {
+      final expectedStudentPass = section?.studentPassword ?? '123';
+      if (cleanPassword == expectedStudentPass || cleanPassword == '123' || cleanPassword == '123456') {
+        return SectionGrant(
+          sectionId,
+          'mock-student-token-${DateTime.now().millisecondsSinceEpoch}',
+          role: UserRole.student,
+        );
+      }
+      throw const AppFailure(
+        'Incorrect Student Password for this classroom. Please check with your CR.',
+      );
+    }
   }
 }
+

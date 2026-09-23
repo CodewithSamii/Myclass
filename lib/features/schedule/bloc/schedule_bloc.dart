@@ -15,6 +15,7 @@ class ScheduleState extends Equatable {
     this.sessions = const [],
     this.courses = const [],
     this.periods = const [],
+    this.timeSlots = const [],
     this.phase = LoadPhase.loading,
     this.error,
     this.saving = false,
@@ -24,6 +25,7 @@ class ScheduleState extends Equatable {
   final List<ClassSession> sessions;
   final List<Course> courses;
   final List<AcademicPeriod> periods;
+  final List<TimeSlot> timeSlots;
   final LoadPhase phase;
   final String? error;
   final bool saving;
@@ -46,6 +48,7 @@ class ScheduleState extends Equatable {
     List<ClassSession>? sessions,
     List<Course>? courses,
     List<AcademicPeriod>? periods,
+    List<TimeSlot>? timeSlots,
     LoadPhase? phase,
     String? error,
     bool? saving,
@@ -56,6 +59,7 @@ class ScheduleState extends Equatable {
     sessions: sessions ?? this.sessions,
     courses: courses ?? this.courses,
     periods: periods ?? this.periods,
+    timeSlots: timeSlots ?? this.timeSlots,
     phase: phase ?? this.phase,
     error: error,
     saving: saving ?? this.saving,
@@ -68,6 +72,7 @@ class ScheduleState extends Equatable {
     sessions,
     courses,
     periods,
+    timeSlots,
     phase,
     error,
     saving,
@@ -105,6 +110,16 @@ class RoutineSaveRequested extends ScheduleEvent {
   final ClassSession session;
 }
 
+class RoutineBulkSaveRequested extends ScheduleEvent {
+  RoutineBulkSaveRequested(this.sessions);
+  final List<ClassSession> sessions;
+}
+
+class TimeSlotsSaveRequested extends ScheduleEvent {
+  TimeSlotsSaveRequested(this.slots);
+  final List<TimeSlot> slots;
+}
+
 class ScheduleBloc extends Bloc<ScheduleEvent, ScheduleState> {
   ScheduleBloc(this.repository, this.clock, this.section)
     : super(ScheduleState(selected: dateOnly(clock.now), now: clock.now)) {
@@ -119,12 +134,19 @@ class ScheduleBloc extends Bloc<ScheduleEvent, ScheduleState> {
     );
     on<ScheduleStarted>((e, emit) async {
       try {
-        final courses = await repository.courses(section);
-        final periods = await repository.periods(section);
+        final results = await Future.wait([
+          repository.courses(section),
+          repository.periods(section),
+          repository.timeSlots(section),
+        ]);
+        final courses = results[0] as List<Course>;
+        final periods = results[1] as List<AcademicPeriod>;
+        final slots = results[2] as List<TimeSlot>;
         emit(
           state.copyWith(
             courses: courses,
             periods: periods,
+            timeSlots: slots,
             phase: LoadPhase.loaded,
           ),
         );
@@ -166,6 +188,25 @@ class ScheduleBloc extends Bloc<ScheduleEvent, ScheduleState> {
         emit(state.copyWith(saving: false, error: f.message));
       }
     });
+    on<RoutineBulkSaveRequested>((e, emit) async {
+      emit(state.copyWith(saving: true));
+      try {
+        await repository.saveRoutine(section, e.sessions);
+        emit(state.copyWith(saving: false));
+      } on AppFailure catch (f) {
+        emit(state.copyWith(saving: false, error: f.message));
+      }
+    });
+    on<TimeSlotsSaveRequested>((e, emit) async {
+      emit(state.copyWith(saving: true));
+      try {
+        await repository.saveTimeSlots(section, e.slots);
+        emit(state.copyWith(timeSlots: e.slots, saving: false));
+      } on AppFailure catch (f) {
+        emit(state.copyWith(saving: false, error: f.message));
+      }
+    });
+
     _sessions = repository
         .watchRoutine(section)
         .listen(

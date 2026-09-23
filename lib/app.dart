@@ -7,9 +7,6 @@ import 'core/clock_cubit.dart';
 import 'design_system/tokens.dart';
 import 'demo/demo_controller.dart';
 import 'features/auth/bloc/auth_bloc.dart';
-import 'features/auth/views/auth_page.dart';
-import 'features/onboarding/bloc/onboarding_bloc.dart';
-import 'features/onboarding/views/onboarding_page.dart';
 import 'features/events/bloc/events_bloc.dart';
 import 'features/schedule/bloc/schedule_bloc.dart';
 import 'features/tasks/bloc/tasks_bloc.dart';
@@ -17,7 +14,6 @@ import 'features/notes/bloc/notes_bloc.dart';
 import 'features/profile/bloc/profile_bloc.dart';
 import 'features/campus/bloc/campus_bloc.dart';
 import 'features/search/bloc/search_bloc.dart';
-import 'shared/widgets/primitives.dart';
 import 'shared/workspace_shell.dart';
 
 typedef AulaApp = MyClassApp;
@@ -25,6 +21,26 @@ typedef AulaApp = MyClassApp;
 class MyClassApp extends StatelessWidget {
   const MyClassApp({super.key, required this.dependencies});
   final AppDependencies dependencies;
+
+  static const guestProfile = UserProfile(
+    uid: 'guest',
+    name: 'Guest User',
+    email: '',
+    memberships: [
+      SectionMembership(
+        sectionId: 'bsc-cse-64-B',
+        departmentId: 'cse',
+        programId: 'bsc-cse',
+        batchId: 'bsc-cse-64',
+        programName: 'Computer Science & Engineering',
+        batchName: 'Batch 64',
+        sectionName: 'Section B',
+        role: UserRole.student,
+      ),
+    ],
+    activeSectionId: 'bsc-cse-64-B',
+  );
+
   @override
   Widget build(BuildContext context) {
     final d = dependencies;
@@ -53,35 +69,14 @@ class MyClassApp extends StatelessWidget {
         ],
         child: BlocBuilder<AuthBloc, AuthState>(
           builder: (context, s) {
-            if (s.phase == AuthPhase.ready && s.profile != null) {
-              return _Workspace(
-                key: ValueKey(s.profile!.uid + s.profile!.activeSectionId),
-                profile: s.profile!,
-                dependencies: d,
-              );
-            }
-            return MaterialApp(
-              title: 'MyClass',
-              debugShowCheckedModeBanner: false,
-              theme: aulaTheme(Brightness.light),
-              darkTheme: aulaTheme(Brightness.dark),
-              home: s.phase == AuthPhase.loading
-                  ? const Scaffold(
-                      body: SafeArea(
-                        child: Padding(
-                          padding: EdgeInsets.all(28),
-                          child: Skeleton(rows: 5),
-                        ),
-                      ),
-                    )
-                  : s.phase == AuthPhase.setup
-                  ? BlocProvider(
-                      create: (_) => OnboardingBloc(d.structure),
-                      child: const OnboardingPage(),
-                    )
-                  : s.phase == AuthPhase.returning
-                  ? const ReturningPage()
-                  : const IntroPage(),
+            final activeProfile = (s.phase == AuthPhase.ready && s.profile != null)
+                ? s.profile!
+                : guestProfile;
+
+            return _Workspace(
+              key: ValueKey('${activeProfile.uid}_${activeProfile.activeSectionId}_${s.phase.name}'),
+              profile: activeProfile,
+              dependencies: d,
             );
           },
         ),
@@ -98,6 +93,7 @@ class _Workspace extends StatelessWidget {
   });
   final UserProfile profile;
   final AppDependencies dependencies;
+
   @override
   Widget build(BuildContext context) {
     final d = dependencies;

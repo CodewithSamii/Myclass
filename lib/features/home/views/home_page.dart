@@ -70,7 +70,51 @@ class HomePage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (profile.uid == 'guest') ...[
+              Surface(
+                color: context.colors.sageBg,
+                border: false,
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(CupertinoIcons.person_2_fill, color: context.colors.sage, size: 22),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Join or Create Classroom',
+                          style: context.type.titleMedium?.copyWith(
+                            color: context.colors.sage,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Select your department and batch to access your classroom schedule, or request a new section as an Admin.',
+                      style: context.type.bodyMedium?.copyWith(
+                        color: context.colors.ink,
+                        height: 1.35,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    FilledButton(
+                      onPressed: onSchedule,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: context.colors.sage,
+                        minimumSize: const Size.fromHeight(44),
+                      ),
+                      child: const Text('Enter Classroom / Join'),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
             if (es.offline || es.stale) ...[
+
               Surface(
                 color: context.colors.subtle,
                 border: false,

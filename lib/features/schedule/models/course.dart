@@ -100,3 +100,48 @@ class AcademicPeriod extends Equatable {
   @override
   List<Object?> get props => [title, start, end, classesSuspended];
 }
+
+class TimeSlot extends Equatable {
+  const TimeSlot({
+    required this.id,
+    required this.label,
+    required this.startMinute,
+    required this.endMinute,
+    this.orderIndex = 0,
+  });
+
+  final String id, label;
+  final int startMinute, endMinute, orderIndex;
+
+  String get display => label.isNotEmpty
+      ? label
+      : '${formatMin(startMinute)}–${formatMin(endMinute)}';
+
+  static String formatMin(int m) {
+    final hour24 = m ~/ 60;
+    final minute = m % 60;
+    final period = hour24 >= 12 ? 'PM' : 'AM';
+    final hour12 = hour24 == 0 ? 12 : (hour24 > 12 ? hour24 - 12 : hour24);
+    final minStr = minute == 0 ? ':00' : ':${minute.toString().padLeft(2, '0')}';
+    return '$hour12$minStr $period';
+  }
+
+
+  TimeSlot copyWith({
+    String? id,
+    String? label,
+    int? startMinute,
+    int? endMinute,
+    int? orderIndex,
+  }) => TimeSlot(
+    id: id ?? this.id,
+    label: label ?? this.label,
+    startMinute: startMinute ?? this.startMinute,
+    endMinute: endMinute ?? this.endMinute,
+    orderIndex: orderIndex ?? this.orderIndex,
+  );
+
+  @override
+  List<Object?> get props => [id, label, startMinute, endMinute, orderIndex];
+}
+
