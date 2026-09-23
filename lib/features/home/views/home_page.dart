@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' hide Badge;
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/clock.dart';
 import '../../../core/format.dart';
@@ -9,12 +10,17 @@ import '../../../core/clock_cubit.dart';
 import '../../../shared/widgets/primitives.dart';
 import '../../events/bloc/events_bloc.dart';
 import '../../events/views/event_detail_page.dart';
+import '../../events/views/upcoming_events_page.dart';
 import '../../schedule/bloc/schedule_bloc.dart';
 import '../../schedule/views/class_detail_page.dart';
 import '../../tasks/bloc/tasks_bloc.dart';
 import '../../profile/bloc/profile_bloc.dart';
 import '../../search/views/search_page.dart';
+import '../../notes/bloc/notes_bloc.dart';
 import '../../notes/views/notes_page.dart';
+import '../../notes/views/note_editor.dart';
+import '../../section_admin/views/set_slots_page.dart';
+import '../../section_admin/views/set_routine_page.dart';
 import '../models/agenda_projection.dart';
 
 class HomePage extends StatelessWidget {
@@ -219,6 +225,7 @@ class HomePage extends StatelessWidget {
     final ps = context.watch<TasksBloc>().state;
     final now = context.watch<ClockCubit>().state;
     final unknown = ss.phase == LoadPhase.notFound;
+
     final today = AgendaProjection.day(
       day: now,
       sessions: ss.sessions,
@@ -241,10 +248,41 @@ class HomePage extends StatelessWidget {
       events: es.items,
       progress: ps.progress,
     );
+
+    final selectedEntries = AgendaProjection.day(
+      day: ss.selected,
+      sessions: ss.sessions,
+      events: es.items,
+      courses: ss.courses,
+      periods: ss.periods,
+      omitRoutine: unknown,
+    );
+    final conflicts = AgendaProjection.conflicts(selectedEntries);
+
+    final dueOnSelected = es.items
+        .where((e) =>
+            e.actionable &&
+            e.status != EventStatus.cancelled &&
+            sameDay(e.effectiveAt, ss.selected))
+        .toList();
+
+    final notes = context
+        .watch<NotesBloc>()
+        .state
+        .items
+        .where(
+          (n) =>
+              n.remindAt != null &&
+              sameDay(n.remindAt!, ss.selected) &&
+              !n.completed,
+        )
+        .toList();
+
     final upcomingEvents = es.items
         .where((e) => e.status != EventStatus.cancelled)
         .toList()
       ..sort((a, b) => a.effectiveAt.compareTo(b.effectiveAt));
+
     final content = <Widget>[
       PageHeader(
         '${Fmt.weekday(now)}, ${now.day}',
@@ -260,12 +298,11 @@ class HomePage extends StatelessWidget {
         ],
       ),
       Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (es.offline || es.stale) ...[
-
               Surface(
                 color: context.colors.subtle,
                 border: false,
@@ -293,56 +330,203 @@ class HomePage extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
             ],
             if (es.error != null) ...[
               ErrorNotice(
                 es.error!,
                 onRetry: () => context.read<EventsBloc>().add(EventsRefresh()),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
             ],
+
+            // 1. Happening Now (Compact Focus Card)
             if (ss.phase == LoadPhase.loading)
-              const Skeleton(rows: 3)
+              const Skeleton(rows: 2)
             else
               _FocusCard(model: model, onTap: () => _openFocus(context, model)),
 
+            const SizedBox(height: 10),
+
+            // 2. Upcoming Events (Compact 1-Row Preview)
+            _UpcomingEventsPreview(
+              events: upcomingEvents,
+              now: now,
+              onTap: () => openPage(context, const UpcomingEventsPage()),
+            ),
+
+            const SizedBox(height: 20),
+
+            // 3. Existing Schedule / Routine Section
+            _ChocolateBlockDateBar(
+              selected: ss.selected,
+              now: ss.now,
+              onDateSelected: (d) =>
+                  context.read<ScheduleBloc>().add(ScheduleDateSelected(d)),
+            ),
+
+            const SizedBox(height: 14),
+
+            // Calendar Selected Date Header & Jump to Today
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  sameDay(ss.selected, ss.now) ? 'Today' : Fmt.fullDate(ss.selected),
+                  style: context.type.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                TextButton(
+                  onPressed: () => context
+                      .read<ScheduleBloc>()
+                      .add(ScheduleDateSelected(dateOnly(ss.now))),
+                  child: const Text('Jump to Today'),
+                ),
+              ],
+            ),
+
+            if (dueOnSelected.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Surface(
+                onTap: () => openPage(
+                  context,
+                  EventDetailPage(id: dueOnSelected.first.id),
+                ),
+                padding: const EdgeInsets.all(12),
+                color: context.colors.amberBg,
+                border: false,
+                child: Row(
+                  children: [
+                    Icon(
+                      CupertinoIcons.doc_text,
+                      size: 18,
+                      color: context.colors.amber,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            dueOnSelected.first.title,
+                            style: context.type.titleSmall?.copyWith(
+                              color: context.colors.amber,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Due ${sameDay(dueOnSelected.first.effectiveAt, ss.now) ? "Today" : Fmt.date(dueOnSelected.first.effectiveAt)}, ${Fmt.time(dueOnSelected.first.effectiveAt)}${dueOnSelected.length > 1 ? " · +${dueOnSelected.length - 1} more event${dueOnSelected.length > 2 ? 's' : ''}" : ""}',
+                            style: context.type.bodySmall?.copyWith(
+                              color: context.colors.amber,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      CupertinoIcons.chevron_right,
+                      size: 14,
+                      color: context.colors.amber,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            if (conflicts.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Surface(
+                color: context.colors.amberBg,
+                border: false,
+                padding: const EdgeInsets.all(10),
+                child: Row(
+                  children: [
+                    Icon(
+                      CupertinoIcons.exclamationmark_triangle,
+                      size: 16,
+                      color: context.colors.amber,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${conflicts.length} items overlap. Check latest updates.',
+                        style: context.type.bodySmall?.copyWith(color: context.colors.amber),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             if (unknown) ...[
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
               const ErrorNotice(
                 'The class routine is not available yet. Academic events are still shown.',
               ),
             ],
 
-            const SizedBox(height: 24),
-            SectionHeader(
-              'Upcoming Events',
-              trailing: Text(
-                '${upcomingEvents.length} events',
-                style: context.type.bodySmall?.copyWith(
-                  color: context.colors.secondary,
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            _UpcomingEventsTable(
-              events: upcomingEvents,
-              now: now,
-              onTapEvent: (e) => openPage(context, EventDetailPage(id: e.id)),
+            const SizedBox(height: 10),
+
+            // 2-Column Schedule Table
+            _TwoColumnScheduleTable(
+              entries: selectedEntries,
+              timeSlots: ss.timeSlots,
+              now: ss.now,
+              onTapEntry: (entry) {
+                if (entry.event != null) {
+                  openPage(context, EventDetailPage(id: entry.event!.id));
+                } else if (entry.session != null) {
+                  openPage(
+                    context,
+                    ClassDetailPage(sessionId: entry.session!.id, day: entry.day),
+                  );
+                }
+              },
             ),
 
+            if (notes.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              const SectionHeader('Your reminders'),
+              for (final note in notes)
+                SettingsRow(
+                  note.text,
+                  subtitle: 'Private · ${Fmt.time(note.remindAt!)}',
+                  icon: CupertinoIcons.bell,
+                  onTap: () => openSheet(context, NoteEditor(note: note)),
+                ),
+            ],
+
             const SizedBox(height: 24),
+
+            if (profile.membership.canManage) ...[
+              const SectionHeader('Admin Shortcuts'),
+              SettingsRow(
+                'Set Universal Time Slots',
+                subtitle: 'Define standard periods (e.g. 9:00–10:05, 10:05–11:10)',
+                icon: CupertinoIcons.clock,
+                onTap: () => openPage(context, const SetSlotsPage()),
+              ),
+              SettingsRow(
+                'Set Weekly Routine',
+                subtitle: 'Assign subjects across Saturday–Friday for this section',
+                icon: CupertinoIcons.calendar,
+                onTap: () => openPage(context, const SetRoutinePage()),
+              ),
+            ],
+
+            const SizedBox(height: 20),
             SettingsRow(
               'A thought for later',
               subtitle: 'Add a private note or reminder',
               icon: CupertinoIcons.square_pencil,
               onTap: () => openPage(context, const NotesPage()),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
           ],
         ),
       ),
     ];
+
     return RefreshIndicator(
       onRefresh: () async {
         context.read<EventsBloc>().add(EventsRefresh());
@@ -376,10 +560,12 @@ void openAgenda(BuildContext context, AgendaEntry entry) => openPage(
       : ClassDetailPage(sessionId: entry.session!.id, day: entry.day),
 );
 
+/// Compact Focus Card ("Happening Now")
 class _FocusCard extends StatelessWidget {
   const _FocusCard({required this.model, required this.onTap});
   final HomeProjection model;
   final VoidCallback onTap;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -387,11 +573,12 @@ class _FocusCard extends StatelessWidget {
     final task = model.dueToday.firstOrNull ?? model.prepareFor;
     final title = e?.title ?? task?.title ?? model.quietTitle;
     final current = model.current != null;
+
     return Surface(
       color: c.hero,
       border: false,
       radius: Shape.large,
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -417,18 +604,21 @@ class _FocusCard extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 6),
           Text(
             title,
-            style: context.type.headlineMedium?.copyWith(color: c.onHero),
-            maxLines: 3,
+            style: context.type.titleMedium?.copyWith(
+              color: c.onHero,
+              fontWeight: FontWeight.bold,
+            ),
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 6),
           if (e != null)
             Wrap(
-              spacing: 16,
-              runSpacing: 7,
+              spacing: 14,
+              runSpacing: 4,
               children: [
                 _meta(
                   context,
@@ -438,7 +628,9 @@ class _FocusCard extends StatelessWidget {
                 _meta(
                   context,
                   CupertinoIcons.location,
-                  e.location.startsWith('Room')
+                  e.location.startsWith('Room') ||
+                          e.location.startsWith('ACL') ||
+                          e.location.startsWith('RKB')
                       ? e.location
                       : 'Room ${e.location}',
                 ),
@@ -449,28 +641,22 @@ class _FocusCard extends StatelessWidget {
               task != null
                   ? '${task.deadline != null ? 'Due' : 'Scheduled'} ${Fmt.relativeDay(task.date, model.now).toLowerCase()} · ${Fmt.time(task.effectiveAt)}'
                   : 'Your next classes and deadlines will appear here.',
-              style: context.type.bodyMedium?.copyWith(color: c.heroMuted),
+              style: context.type.bodySmall?.copyWith(color: c.heroMuted),
             ),
           if (current && model.next != null) ...[
-            const SizedBox(height: 22),
-            Divider(color: c.heroMuted.withValues(alpha: .25)),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
             Row(
               children: [
                 Label('Next', color: c.heroMuted),
-                const Spacer(),
-                Text(
-                  Fmt.time(model.next!.at),
-                  style: context.type.bodySmall?.copyWith(color: c.heroMuted),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${model.next!.course.compactName} · ${Fmt.time(model.next!.at)}',
+                    style: context.type.bodySmall?.copyWith(color: c.heroMuted),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              model.next!.course.compactName,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: context.type.titleSmall?.copyWith(color: c.onHero),
             ),
           ],
         ],
@@ -481,11 +667,11 @@ class _FocusCard extends StatelessWidget {
   Widget _meta(BuildContext context, IconData icon, String text) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
-      Icon(icon, size: 14, color: context.colors.heroMuted),
-      const SizedBox(width: 6),
+      Icon(icon, size: 13, color: context.colors.heroMuted),
+      const SizedBox(width: 5),
       Text(
         text,
-        style: context.type.bodyMedium?.copyWith(
+        style: context.type.bodySmall?.copyWith(
           color: context.colors.heroMuted,
         ),
       ),
@@ -493,27 +679,236 @@ class _FocusCard extends StatelessWidget {
   );
 }
 
-/// 2-Column Upcoming Events Table
-/// Left column: Date & Time (Grouped under same date if multiple events on one day)
-/// Right column: Event title & details
-class _UpcomingEventsTable extends StatelessWidget {
-  const _UpcomingEventsTable({
+/// Compact 1-Row Preview of Upcoming Events
+class _UpcomingEventsPreview extends StatelessWidget {
+  const _UpcomingEventsPreview({
     required this.events,
     required this.now,
-    required this.onTapEvent,
+    required this.onTap,
   });
 
   final List<AcademicEvent> events;
   final DateTime now;
-  final ValueChanged<AcademicEvent> onTapEvent;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final nextEvent = events.isNotEmpty ? events.first : null;
+
+    return Surface(
+      onTap: onTap,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: c.subtle,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(CupertinoIcons.calendar, size: 16, color: c.ink),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        'Upcoming Events',
+                        style: context.type.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: c.subtle,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '${events.length}',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: c.secondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  nextEvent != null
+                      ? '${Fmt.date(nextEvent.effectiveAt)}, ${(nextEvent.startsAt == null && nextEvent.deadline == null) ? "TBA" : Fmt.time(nextEvent.effectiveAt)} · ${nextEvent.title}'
+                      : 'No upcoming events scheduled',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.type.bodySmall?.copyWith(
+                    color: c.secondary,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            'View all',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: c.ink,
+            ),
+          ),
+          const SizedBox(width: 2),
+          Icon(CupertinoIcons.chevron_right, size: 12, color: c.faint),
+        ],
+      ),
+    );
+  }
+}
+
+/// 2-Row "Chocolate Block" Date Bar
+class _ChocolateBlockDateBar extends StatelessWidget {
+  const _ChocolateBlockDateBar({
+    required this.selected,
+    required this.now,
+    required this.onDateSelected,
+  });
+
+  final DateTime selected;
+  final DateTime now;
+  final ValueChanged<DateTime> onDateSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final startDay = dateOnly(now).subtract(const Duration(days: 3));
+    final days = List.generate(18, (i) => startDay.add(Duration(days: i)));
+
+    return SizedBox(
+      height: 74,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: days.length,
+        itemBuilder: (ctx, i) {
+          final day = days[i];
+          final isSelected = sameDay(day, selected);
+          final isToday = sameDay(day, now);
+
+          const chocolateDark = Color(0xFF3E2723);
+          const chocolateMedium = Color(0xFF4E342E);
+          const chocolateCream = Color(0xFFFFF8E7);
+          const chocolateSubtle = Color(0xFFEFEBE9);
+
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: InkWell(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                onDateSelected(day);
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: AnimatedContainer(
+                duration: Motion.fast,
+                width: 76,
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                decoration: BoxDecoration(
+                  gradient: isSelected
+                      ? const LinearGradient(
+                          colors: [chocolateMedium, chocolateDark],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                      : null,
+                  color: isSelected
+                      ? null
+                      : (isDark ? const Color(0xFF231D1B) : chocolateSubtle),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSelected
+                        ? const Color(0xFF8D6E63)
+                        : (isToday ? const Color(0xFF5D4037) : Colors.transparent),
+                    width: isSelected ? 1.5 : (isToday ? 1.2 : 0),
+                  ),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.22),
+                            blurRadius: 6,
+                            offset: const Offset(0, 3),
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '${day.day} ${Fmt.month(day).substring(0, 3)}',
+                      maxLines: 1,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: isSelected
+                            ? chocolateCream
+                            : (isDark ? Colors.white : const Color(0xFF2E1C14)),
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      Fmt.weekday(day),
+                      maxLines: 1,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                        color: isSelected
+                            ? chocolateCream.withOpacity(0.85)
+                            : (isDark ? Colors.grey[400] : const Color(0xFF6D4C41)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// 2-Column Schedule Table Layout
+class _TwoColumnScheduleTable extends StatelessWidget {
+  const _TwoColumnScheduleTable({
+    required this.entries,
+    required this.timeSlots,
+    required this.now,
+    required this.onTapEntry,
+  });
+
+  final List<AgendaEntry> entries;
+  final List<TimeSlot> timeSlots;
+  final DateTime now;
+  final ValueChanged<AgendaEntry> onTapEntry;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
 
-    if (events.isEmpty) {
+    if (entries.isEmpty) {
       return Container(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(36),
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: c.surface,
@@ -522,15 +917,15 @@ class _UpcomingEventsTable extends StatelessWidget {
         ),
         child: Column(
           children: [
-            Icon(CupertinoIcons.calendar_badge_plus, size: 36, color: c.faint),
-            const SizedBox(height: 10),
+            Icon(CupertinoIcons.moon_stars, size: 40, color: c.faint),
+            const SizedBox(height: 12),
             Text(
-              'No Upcoming Events',
+              'No Classes or Events Scheduled',
               style: context.type.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 4),
             Text(
-              'Academic exams, assignments, and quizzes will appear here.',
+              'Enjoy your free time or prepare ahead for upcoming exams.',
               textAlign: TextAlign.center,
               style: context.type.bodySmall?.copyWith(color: c.secondary),
             ),
@@ -547,7 +942,6 @@ class _UpcomingEventsTable extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Table header
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
@@ -559,7 +953,7 @@ class _UpcomingEventsTable extends StatelessWidget {
                 SizedBox(
                   width: 105,
                   child: Text(
-                    'DATE & TIME',
+                    'TIME SLOT',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
@@ -571,7 +965,7 @@ class _UpcomingEventsTable extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'EVENT',
+                    'SUBJECT / EVENT',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
@@ -583,15 +977,12 @@ class _UpcomingEventsTable extends StatelessWidget {
               ],
             ),
           ),
-
-          // Event rows with same-day grouping
-          for (var i = 0; i < events.length; i++) ...[
+          for (var i = 0; i < entries.length; i++) ...[
             if (i > 0) Divider(height: 1, color: c.line),
-            _UpcomingEventRow(
-              event: events[i],
-              isFirstOfDay: i == 0 || !sameDay(events[i].effectiveAt, events[i - 1].effectiveAt),
+            _ScheduleTableRow(
+              entry: entries[i],
               now: now,
-              onTap: () => onTapEvent(events[i]),
+              onTap: () => onTapEntry(entries[i]),
             ),
           ],
         ],
@@ -600,21 +991,20 @@ class _UpcomingEventsTable extends StatelessWidget {
   }
 }
 
-class _UpcomingEventRow extends StatelessWidget {
-  const _UpcomingEventRow({
-    required this.event,
-    required this.isFirstOfDay,
+class _ScheduleTableRow extends StatelessWidget {
+  const _ScheduleTableRow({
+    required this.entry,
     required this.now,
     required this.onTap,
   });
 
-  final AcademicEvent event;
-  final bool isFirstOfDay;
+  final AgendaEntry entry;
   final DateTime now;
   final VoidCallback onTap;
 
   bool get isMajorAssessment {
-    final t = event.type;
+    if (entry.event == null) return false;
+    final t = entry.event!.type;
     return t == AcademicEventType.classTest ||
         t == AcademicEventType.presentation ||
         t == AcademicEventType.viva ||
@@ -627,110 +1017,122 @@ class _UpcomingEventRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final timeStr = Fmt.time(event.effectiveAt);
-    final dateStr = Fmt.date(event.effectiveAt);
+    final timeStr = entry.deadline
+        ? 'Due ${Fmt.time(entry.at)}'
+        : entry.end != null
+        ? '${Fmt.time(entry.at, suffix: false)}–${Fmt.time(entry.end!)}'
+        : Fmt.time(entry.at);
+
+    final isAcademicEvent = entry.event != null;
+    final isCancelled = entry.cancelled;
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(4),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Left Column: Date & Time
             SizedBox(
               width: 105,
-              child: isFirstOfDay
-                  ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          dateStr,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: c.ink,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          timeStr,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
-                            color: c.secondary,
-                          ),
-                        ),
-                      ],
-                    )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          '—',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: c.faint,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          timeStr,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
-                            color: c.secondary,
-                          ),
-                        ),
-                      ],
-                    ),
-            ),
-
-            const SizedBox(width: 12),
-
-            // Right Column: Event
-            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    event.title,
+                    timeStr,
                     style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: isMajorAssessment ? FontWeight.w700 : FontWeight.w600,
-                      color: isMajorAssessment ? const Color(0xFFD32F2F) : c.ink,
-                      decoration: isMajorAssessment ? TextDecoration.underline : TextDecoration.none,
-                      decorationColor: const Color(0xFFD32F2F),
-                      decorationThickness: 1.5,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: isCancelled ? c.faint : c.ink,
                     ),
                   ),
-                  if (event.location != null && event.location!.isNotEmpty) ...[
-                    const SizedBox(height: 3),
-                    Text(
-                      event.location!.startsWith('Room') ||
-                              event.location!.startsWith('ACL') ||
-                              event.location!.startsWith('RKB')
-                          ? event.location!
-                          : 'Room ${event.location}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: c.secondary,
-                      ),
+                  if (entry.location.isNotEmpty && !entry.deadline) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(CupertinoIcons.location, size: 11, color: c.faint),
+                        const SizedBox(width: 3),
+                        Expanded(
+                          child: Text(
+                            entry.location.startsWith('Room') ? entry.location : 'Rm ${entry.location}',
+                            style: TextStyle(fontSize: 10, color: c.secondary),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ],
               ),
             ),
-
-            Icon(
-              CupertinoIcons.chevron_right,
-              size: 14,
-              color: c.faint,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (isAcademicEvent && isMajorAssessment) ...[
+                    Text(
+                      '${entry.event!.type.label.toUpperCase()}: ${entry.title}',
+                      style: const TextStyle(
+                        color: Color(0xFFC62828),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        decoration: TextDecoration.underline,
+                        decorationColor: Color(0xFFC62828),
+                        decorationThickness: 1.5,
+                      ),
+                    ),
+                  ] else ...[
+                    Text(
+                      entry.title,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: isCancelled ? c.faint : c.ink,
+                        decoration: isCancelled ? TextDecoration.lineThrough : null,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 3),
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 6,
+                    runSpacing: 2,
+                    children: [
+                      Text(
+                        entry.course.compactName,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: c.secondary,
+                        ),
+                      ),
+                      if (entry.session?.isLab == true)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: c.sageBg,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'LAB',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: c.sage,
+                            ),
+                          ),
+                        ),
+                      if (isCancelled)
+                        Text(
+                          'Cancelled',
+                          style: TextStyle(fontSize: 11, color: c.red, fontWeight: FontWeight.bold),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
             ),
+            Icon(CupertinoIcons.chevron_right, size: 14, color: c.faint),
           ],
         ),
       ),

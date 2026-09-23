@@ -47,8 +47,8 @@ void main() {
       await settle(tester);
       await capture(tester, '23-logged-in-schedule');
 
-      // Check Schedule tab is now visible and active
-      expect(find.text('Schedule'), findsWidgets);
+      // Check logged in workspace shell
+      expect(find.text('Campus'), findsWidgets);
       expect(
         tester
             .element(find.byType(WorkspaceShell))
@@ -153,13 +153,11 @@ void main() {
       final d = await boot(tester);
       final ctx = tester.element(find.byType(WorkspaceShell));
       final schedule = ctx.read<ScheduleBloc>();
-      await tester.tap(find.text('Schedule').last);
-      await settle(tester);
       schedule.add(ScheduleDateSelected(DateTime(2026, 9, 23)));
       await settle(tester);
       await tester.tap(find.text('Campus').last);
       await settle(tester);
-      await tester.tap(find.text('Schedule').last);
+      await tester.tap(find.text('Home').last);
       await settle(tester);
       expect(schedule.state.selected, DateTime(2026, 9, 23));
       await push(
@@ -225,7 +223,7 @@ void main() {
     tester.platformDispatcher.textScaleFactorTestValue = 1.5;
     await settle(tester);
     await capture(tester, '27-large-text-home');
-    for (final tab in ['Home', 'Schedule', 'Campus', 'Profile']) {
+    for (final tab in ['Home', 'Campus', 'Profile']) {
       await tester.tap(find.text(tab).last);
       await settle(tester);
       expect(

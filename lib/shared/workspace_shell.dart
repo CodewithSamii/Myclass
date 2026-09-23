@@ -7,7 +7,6 @@ import '../features/auth/bloc/auth_bloc.dart';
 import '../features/auth/views/auth_page.dart';
 import '../features/auth/views/section_entry_sheet.dart';
 import '../features/home/views/home_page.dart';
-import '../features/schedule/views/schedule_page.dart';
 import '../features/campus/views/campus_page.dart';
 import '../features/profile/views/profile_page.dart';
 import '../features/tasks/bloc/tasks_bloc.dart';
@@ -51,29 +50,19 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
     final isAdmin = membership.isAdmin;
     final isOwner = membership.isOwner;
 
-    final labels = isLoggedIn
-        ? ['Home', 'Schedule', 'Campus', 'Profile']
-        : ['Home', 'Campus', 'Profile'];
+    final labels = ['Home', 'Campus', 'Profile'];
 
-    final icons = isLoggedIn
-        ? [
-            CupertinoIcons.house,
-            CupertinoIcons.calendar,
-            CupertinoIcons.square_grid_2x2,
-            CupertinoIcons.person_crop_circle,
-          ]
-        : [
-            CupertinoIcons.house,
-            CupertinoIcons.square_grid_2x2,
-            CupertinoIcons.person_crop_circle,
-          ];
+    final icons = [
+      CupertinoIcons.house,
+      CupertinoIcons.square_grid_2x2,
+      CupertinoIcons.person_crop_circle,
+    ];
 
     final pages = isLoggedIn
         ? [
             HomePage(
-              onSchedule: () => select(1),
+              onSchedule: () => select(0),
             ),
-            const SchedulePage(),
             const CampusPage(),
             const ProfilePage(),
           ]
@@ -381,7 +370,7 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
                       title: const Text('Class Schedule'),
                       onTap: () {
                         Navigator.of(context).pop();
-                        select(1);
+                        select(0);
                       },
                     ),
                   ],
