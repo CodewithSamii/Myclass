@@ -71,6 +71,7 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
               onSchedule: () => showModalBottomSheet(
                 context: context,
                 isScrollControlled: true,
+                useSafeArea: true,
                 builder: (_) => const SectionEntrySheet(),
               ),
             ),
@@ -166,6 +167,7 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
                                     onPressed: () => showModalBottomSheet(
                                       context: context,
                                       isScrollControlled: true,
+                                      useSafeArea: true,
                                       builder: (_) => const SectionEntrySheet(),
                                     ),
                                     style: FilledButton.styleFrom(
@@ -463,6 +465,7 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
                         showModalBottomSheet(
                           context: context,
                           isScrollControlled: true,
+                          useSafeArea: true,
                           builder: (_) => const SectionEntrySheet(),
                         );
                       },

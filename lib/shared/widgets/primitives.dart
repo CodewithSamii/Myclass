@@ -17,8 +17,10 @@ Future<T?> openSheet<T>(
   isScrollControlled: scroll,
   useSafeArea: true,
   showDragHandle: true,
-  builder: (c) => Padding(
+  builder: (c) => AnimatedPadding(
     padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(c).bottom),
+    duration: Motion.fast,
+    curve: Motion.curve,
     child: child,
   ),
 );

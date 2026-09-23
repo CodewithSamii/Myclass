@@ -233,6 +233,7 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: c.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -420,63 +421,71 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
 
-    return Container(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.sizeOf(context).height * 0.88,
-      ),
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Academic Classroom',
-                  style: context.type.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+    return AnimatedPadding(
+      padding: EdgeInsets.only(bottom: bottomInset),
+      duration: Motion.fast,
+      curve: Motion.curve,
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * 0.90,
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Academic Classroom',
+                    style: context.type.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+                  ),
                 ),
-              ),
-              IconButton(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(CupertinoIcons.xmark_circle_fill, size: 22),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(CupertinoIcons.xmark_circle_fill, size: 22),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
 
-          // Tab switcher
-          ChoiceBar<int>(
-            values: const [0, 1, 2],
-            selected: tabIndex,
-            label: (i) => switch (i) {
-              0 => 'Join Classroom',
-              1 => 'Create Classroom',
-              _ => 'Owner Mode',
-            },
-            onChanged: (i) {
-              setState(() {
-                tabIndex = i;
-                errorMessage = null;
-                createSuccess = false;
-              });
-            },
-          ),
-          const SizedBox(height: 16),
-          if (errorMessage != null) ...[
-            ErrorNotice(errorMessage!),
-            const SizedBox(height: 14),
-          ],
-          Expanded(
-            child: SingleChildScrollView(
-              child: switch (tabIndex) {
-                0 => _buildJoinTab(c),
-                1 => _buildCreateTab(c),
-                _ => _buildOwnerTab(c),
+            // Tab switcher
+            ChoiceBar<int>(
+              values: const [0, 1, 2],
+              selected: tabIndex,
+              label: (i) => switch (i) {
+                0 => 'Join Classroom',
+                1 => 'Create Classroom',
+                _ => 'Owner Mode',
+              },
+              onChanged: (i) {
+                setState(() {
+                  tabIndex = i;
+                  errorMessage = null;
+                  createSuccess = false;
+                });
               },
             ),
-          ),
-        ],
+            const SizedBox(height: 16),
+            if (errorMessage != null) ...[
+              ErrorNotice(errorMessage!),
+              const SizedBox(height: 14),
+            ],
+            Expanded(
+              child: SingleChildScrollView(
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                child: switch (tabIndex) {
+                  0 => _buildJoinTab(c),
+                  1 => _buildCreateTab(c),
+                  _ => _buildOwnerTab(c),
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -729,6 +738,7 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
         const SizedBox(height: 6),
         TextField(
           controller: joinNameController,
+          scrollPadding: const EdgeInsets.only(bottom: 80),
           decoration: const InputDecoration(
             hintText: 'e.g. Samir',
             prefixIcon: Icon(CupertinoIcons.person, size: 18),
@@ -744,6 +754,7 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
         const SizedBox(height: 6),
         TextField(
           controller: joinPasswordController,
+          scrollPadding: const EdgeInsets.only(bottom: 80),
           obscureText: joinObscurePassword,
           decoration: InputDecoration(
             hintText: isEnteringAsAdmin ? 'Enter Admin Password' : 'Enter Student Password',
@@ -898,6 +909,7 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
         else
           TextField(
             controller: createDeptNameController,
+            scrollPadding: const EdgeInsets.only(bottom: 80),
             decoration: const InputDecoration(
               hintText: 'e.g. Computer Science & Engineering',
               prefixIcon: Icon(CupertinoIcons.book, size: 18),
@@ -916,6 +928,7 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
                   const SizedBox(height: 6),
                   TextField(
                     controller: createBatchController,
+                    scrollPadding: const EdgeInsets.only(bottom: 80),
                     decoration: const InputDecoration(
                       hintText: 'e.g. 64',
                       prefixIcon: Icon(CupertinoIcons.number, size: 18),
@@ -933,6 +946,7 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
                   const SizedBox(height: 6),
                   TextField(
                     controller: createSectionController,
+                    scrollPadding: const EdgeInsets.only(bottom: 80),
                     decoration: const InputDecoration(
                       hintText: 'e.g. Section D',
                       prefixIcon: Icon(CupertinoIcons.square_grid_2x2, size: 18),
@@ -950,6 +964,7 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
         const SizedBox(height: 6),
         TextField(
           controller: createCreatorNameController,
+          scrollPadding: const EdgeInsets.only(bottom: 80),
           decoration: const InputDecoration(
             hintText: 'e.g. Samir Chowdhury',
             prefixIcon: Icon(CupertinoIcons.person_badge_plus, size: 18),
@@ -962,6 +977,7 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
         const SizedBox(height: 6),
         TextField(
           controller: createAdminPassController,
+          scrollPadding: const EdgeInsets.only(bottom: 80),
           decoration: const InputDecoration(
             hintText: 'Set a secret Admin password',
             prefixIcon: Icon(CupertinoIcons.shield_lefthalf_fill, size: 18),
@@ -973,6 +989,7 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
         const SizedBox(height: 6),
         TextField(
           controller: createStudentPassController,
+          scrollPadding: const EdgeInsets.only(bottom: 80),
           decoration: const InputDecoration(
             hintText: 'Set student access password',
             prefixIcon: Icon(CupertinoIcons.person_2, size: 18),
@@ -1019,6 +1036,7 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
         const SizedBox(height: 6),
         TextField(
           controller: ownerPassController,
+          scrollPadding: const EdgeInsets.only(bottom: 80),
           obscureText: true,
           decoration: const InputDecoration(
             hintText: 'Enter owner master passkey (e.g. owner)',
@@ -1067,113 +1085,121 @@ class _UniversitySearchSheetState extends State<_UniversitySearchSheet> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     final filtered = widget.universities.where((u) {
       if (_query.isEmpty) return true;
       final q = _query.toLowerCase().trim();
       return u.name.toLowerCase().contains(q) || u.id.toLowerCase().contains(q);
     }).toList();
 
-    return Container(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.sizeOf(context).height * 0.85,
-      ),
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Select University',
-                  style: context.type.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+    return AnimatedPadding(
+      padding: EdgeInsets.only(bottom: bottomInset),
+      duration: Motion.fast,
+      curve: Motion.curve,
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * 0.85,
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Select University',
+                    style: context.type.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                  ),
                 ),
-              ),
-              IconButton(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(CupertinoIcons.xmark_circle_fill, size: 22),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Search Field
-          TextField(
-            controller: _searchController,
-            onChanged: (val) => setState(() => _query = val),
-            decoration: InputDecoration(
-              hintText: 'Search university (e.g. Leading, Dhaka, North)...',
-              prefixIcon: const Icon(CupertinoIcons.search, size: 18),
-              suffixIcon: _query.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(CupertinoIcons.clear_circled_solid, size: 18),
-                      onPressed: () {
-                        _searchController.clear();
-                        setState(() => _query = '');
-                      },
-                    )
-                  : null,
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(CupertinoIcons.xmark_circle_fill, size: 22),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 12),
+            const SizedBox(height: 12),
 
-          Text(
-            '${filtered.length} universities found',
-            style: context.type.bodySmall?.copyWith(color: c.secondary),
-          ),
-          const SizedBox(height: 8),
+            // Search Field
+            TextField(
+              controller: _searchController,
+              scrollPadding: const EdgeInsets.only(bottom: 60),
+              onChanged: (val) => setState(() => _query = val),
+              decoration: InputDecoration(
+                hintText: 'Search university (e.g. Leading, Dhaka, North)...',
+                prefixIcon: const Icon(CupertinoIcons.search, size: 18),
+                suffixIcon: _query.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(CupertinoIcons.clear_circled_solid, size: 18),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _query = '');
+                        },
+                      )
+                    : null,
+              ),
+            ),
+            const SizedBox(height: 12),
 
-          // University List
-          Expanded(
-            child: filtered.isEmpty
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Text(
-                        'No universities found matching "$_query"',
-                        textAlign: TextAlign.center,
-                        style: context.type.bodyMedium?.copyWith(color: c.secondary),
+            Text(
+              '${filtered.length} universities found',
+              style: context.type.bodySmall?.copyWith(color: c.secondary),
+            ),
+            const SizedBox(height: 8),
+
+            // University List
+            Expanded(
+              child: filtered.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text(
+                          'No universities found matching "$_query"',
+                          textAlign: TextAlign.center,
+                          style: context.type.bodyMedium?.copyWith(color: c.secondary),
+                        ),
                       ),
-                    ),
-                  )
-                : ListView.separated(
-                    itemCount: filtered.length,
-                    separatorBuilder: (_, _) => Divider(height: 1, color: c.line),
-                    itemBuilder: (context, index) {
-                      final uni = filtered[index];
-                      final isSelected = widget.selected?.id == uni.id ||
-                          widget.selected?.name == uni.name;
+                    )
+                  : ListView.separated(
+                      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                      itemCount: filtered.length,
+                      separatorBuilder: (_, _) => Divider(height: 1, color: c.line),
+                      itemBuilder: (context, index) {
+                        final uni = filtered[index];
+                        final isSelected = widget.selected?.id == uni.id ||
+                            widget.selected?.name == uni.name;
 
-                      return InkWell(
-                        onTap: () => widget.onSelected(uni),
-                        borderRadius: BorderRadius.circular(10),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                          decoration: BoxDecoration(
-                            color: isSelected ? c.sageBg : Colors.transparent,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  uni.name,
-                                  style: context.type.bodyMedium?.copyWith(
-                                    color: isSelected ? c.sage : c.ink,
-                                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                        return InkWell(
+                          onTap: () => widget.onSelected(uni),
+                          borderRadius: BorderRadius.circular(10),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                            decoration: BoxDecoration(
+                              color: isSelected ? c.sageBg : Colors.transparent,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    uni.name,
+                                    style: context.type.bodyMedium?.copyWith(
+                                      color: isSelected ? c.sage : c.ink,
+                                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              if (isSelected)
-                                Icon(CupertinoIcons.checkmark_alt_circle_fill, color: c.sage, size: 20),
-                            ],
+                                if (isSelected)
+                                  Icon(CupertinoIcons.checkmark_alt_circle_fill, color: c.sage, size: 20),
+                              ],
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ],
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
