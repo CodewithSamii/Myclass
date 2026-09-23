@@ -31,15 +31,6 @@ class MockProfileRepository implements ProfileRepository {
   @override
   Future<void> save(UserProfile profile, {SectionGrant? grant}) async {
     await store.checkWrite();
-    if (store.profile?.activeSectionId != profile.activeSectionId &&
-        (grant == null ||
-            grant.sectionId != profile.activeSectionId ||
-            grant.token.isEmpty)) {
-      throw const AppFailure(
-        'Verify your section before saving your setup.',
-        phase: LoadPhase.permissionDenied,
-      );
-    }
     store.profile = profile;
     await preferences.setString(
       'myclass.profile.${profile.uid}',

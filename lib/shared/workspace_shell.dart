@@ -50,13 +50,20 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
     final isAdmin = membership.isAdmin;
     final isOwner = membership.isOwner;
 
-    final labels = ['Home', 'Campus', 'Profile'];
+    final labels = isLoggedIn
+        ? ['Home', 'Campus', 'Profile']
+        : ['Home', 'Profile'];
 
-    final icons = [
-      CupertinoIcons.house,
-      CupertinoIcons.square_grid_2x2,
-      CupertinoIcons.person_crop_circle,
-    ];
+    final icons = isLoggedIn
+        ? [
+            CupertinoIcons.house,
+            CupertinoIcons.square_grid_2x2,
+            CupertinoIcons.person_crop_circle,
+          ]
+        : [
+            CupertinoIcons.house,
+            CupertinoIcons.person_crop_circle,
+          ];
 
     final pages = isLoggedIn
         ? [
@@ -75,7 +82,6 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
                 builder: (_) => const SectionEntrySheet(),
               ),
             ),
-            const CampusPage(),
             const ProfilePage(),
           ];
 

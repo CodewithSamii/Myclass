@@ -585,15 +585,23 @@ class _FocusCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 5,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: c.heroMuted,
+                width: 6,
+                height: 6,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF22C55E),
                   shape: BoxShape.circle,
                 ),
               ),
               const SizedBox(width: 7),
-              Expanded(child: Label(model.headline, color: c.heroMuted)),
+              Expanded(
+                child: Text(
+                  'Happening Now',
+                  style: context.type.labelSmall?.copyWith(
+                    color: c.heroMuted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
               if (e != null)
                 Text(
                   current
