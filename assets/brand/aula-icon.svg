@@ -1,5 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-  <rect width="1024" height="1024" rx="224" fill="#28352d"/>
-  <path d="M 200 780 L 200 240 L 480 580 L 750 240" fill="none" stroke="#f3f5ed" stroke-width="72" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M 750 240 C 940 240 960 770 650 800 C 490 820 370 760 350 680" fill="none" stroke="#f3f5ed" stroke-width="72" stroke-linecap="round" stroke-linejoin="round"/>
+  <defs>
+    <linearGradient id="tealCyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00A3A3" />
+      <stop offset="100%" stop-color="#00CCCC" />
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="224" fill="#28352D"/>
+  <!-- Lowercase 'm' in Ocean Blue -->
+  <path d="M 164 758 L 164 368 C 164 348 348 348 348 758 M 348 471 C 348 348 532 348 532 532" fill="none" stroke="#005AB4" stroke-width="84" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Uppercase 'C' with Teal-Cyan gradient -->
+  <path d="M 532 532 C 532 266 655 205 798 205 C 983 205 983 820 778 820 C 635 820 532 778 512 696" fill="none" stroke="url(#tealCyanGrad)" stroke-width="84" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

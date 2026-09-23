@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' hide Badge;
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -51,43 +52,53 @@ class MyClassMark extends StatelessWidget {
 }
 
 class _MCMarkPainter extends CustomPainter {
-  const _MCMarkPainter(this.color);
-  final Color color;
+  const _MCMarkPainter([this.color]);
+  final Color? color;
   @override
   void paint(Canvas canvas, Size s) {
     final w = s.width;
     final h = s.height;
     final strokeWidth = w * 0.088;
 
-    final p = Paint()
-      ..color = color
+    final oceanBlue = color ?? const Color(0xFF005AB4);
+    final teal = color != null ? color!.withValues(alpha: 0.85) : const Color(0xFF00A3A3);
+    final cyan = color != null ? color!.withValues(alpha: 0.65) : const Color(0xFF00CCCC);
+
+    final mPaint = Paint()
+      ..color = oceanBlue
       ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
       ..style = PaintingStyle.stroke;
 
-    // Stroke 1: Left stem and central chevron of 'M'
+    // 1. Lowercase 'm' path
     final mPath = Path()
-      ..moveTo(w * 0.16, h * 0.80)
-      ..lineTo(w * 0.16, h * 0.22)
-      ..lineTo(w * 0.47, h * 0.56)
-      ..lineTo(w * 0.76, h * 0.22);
-    canvas.drawPath(mPath, p);
+      ..moveTo(w * 0.16, h * 0.74)
+      ..lineTo(w * 0.16, h * 0.36)
+      ..cubicTo(w * 0.16, h * 0.34, w * 0.34, h * 0.34, w * 0.34, h * 0.74)
+      ..moveTo(w * 0.34, h * 0.46)
+      ..cubicTo(w * 0.34, h * 0.34, w * 0.52, h * 0.34, w * 0.52, h * 0.52);
+    canvas.drawPath(mPath, mPaint);
 
-    // Stroke 2: The seamlessly integrated 'C' arc flowing from the right apex of M
-    final cPath = Path()
-      ..moveTo(w * 0.76, h * 0.22)
-      ..cubicTo(
-        w * 0.94, h * 0.22,
-        w * 0.96, h * 0.76,
-        w * 0.64, h * 0.80,
+    // 2. Uppercase 'C' with gradient from teal to cyan
+    final cRect = Rect.fromLTWH(w * 0.50, h * 0.18, w * 0.46, h * 0.64);
+    final cPaint = Paint()
+      ..shader = ui.Gradient.linear(
+        Offset(cRect.left, cRect.top),
+        Offset(cRect.right, cRect.bottom),
+        [teal, cyan],
       )
-      ..cubicTo(
-        w * 0.48, h * 0.82,
-        w * 0.36, h * 0.76,
-        w * 0.34, h * 0.68,
-      );
-    canvas.drawPath(cPath, p);
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..style = PaintingStyle.stroke;
+
+    final cPath = Path()
+      ..moveTo(w * 0.52, h * 0.52)
+      ..cubicTo(w * 0.52, h * 0.26, w * 0.64, h * 0.20, w * 0.78, h * 0.20)
+      ..cubicTo(w * 0.96, h * 0.20, w * 0.96, h * 0.80, w * 0.76, h * 0.80)
+      ..cubicTo(w * 0.62, h * 0.80, w * 0.52, h * 0.76, w * 0.50, h * 0.68);
+    canvas.drawPath(cPath, cPaint);
   }
 
   @override
