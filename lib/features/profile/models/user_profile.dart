@@ -14,6 +14,7 @@ class ReminderPreference extends Equatable {
     this.dailySummary = false,
     this.summaryMinute = 1200,
     this.scheduleChanges = true,
+    this.busReminderMinutes = 15,
   });
   final List<int> classOffsets,
       assignmentOffsets,
@@ -22,6 +23,7 @@ class ReminderPreference extends Equatable {
       examOffsets;
   final bool dailySummary, scheduleChanges;
   final int summaryMinute;
+  final int busReminderMinutes;
   List<int> forType(AcademicEventType t) => t.isExam
       ? examOffsets
       : t == AcademicEventType.viva
@@ -38,6 +40,7 @@ class ReminderPreference extends Equatable {
     bool? dailySummary,
     int? summaryMinute,
     bool? scheduleChanges,
+    int? busReminderMinutes,
   }) => ReminderPreference(
     classOffsets: classOffsets ?? this.classOffsets,
     assignmentOffsets: assignmentOffsets ?? this.assignmentOffsets,
@@ -47,6 +50,7 @@ class ReminderPreference extends Equatable {
     dailySummary: dailySummary ?? this.dailySummary,
     summaryMinute: summaryMinute ?? this.summaryMinute,
     scheduleChanges: scheduleChanges ?? this.scheduleChanges,
+    busReminderMinutes: busReminderMinutes ?? this.busReminderMinutes,
   );
   Map<String, dynamic> toJson() => {
     'class': classOffsets,
@@ -57,6 +61,7 @@ class ReminderPreference extends Equatable {
     'daily': dailySummary,
     'minute': summaryMinute,
     'changes': scheduleChanges,
+    'bus': busReminderMinutes,
   };
   factory ReminderPreference.fromJson(Map<String, dynamic> j) =>
       ReminderPreference(
@@ -68,6 +73,7 @@ class ReminderPreference extends Equatable {
         dailySummary: j['daily'],
         summaryMinute: j['minute'],
         scheduleChanges: j['changes'],
+        busReminderMinutes: j['bus'] ?? 15,
       );
   @override
   List<Object?> get props => [
@@ -79,6 +85,7 @@ class ReminderPreference extends Equatable {
     dailySummary,
     summaryMinute,
     scheduleChanges,
+    busReminderMinutes,
   ];
 }
 

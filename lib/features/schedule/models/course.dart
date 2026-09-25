@@ -36,34 +36,73 @@ class ClassSession extends Equatable {
     this.isOnline = false,
     this.cancelled = false,
     this.changed = false,
+    this.specificDate,
+    this.isTemporary = false,
+    this.isShifted = false,
+    this.originalDate,
+    this.originalTimeLabel,
+    this.notes,
+    this.meetingLink,
+    this.customCourseName,
+    this.facultyName,
   });
   final String id, sectionId, courseId;
   final int weekday, startMinute, endMinute;
   final String? room;
   final bool isLab, isOnline, cancelled, changed;
+  final DateTime? specificDate;
+  final bool isTemporary, isShifted;
+  final DateTime? originalDate;
+  final String? originalTimeLabel;
+  final String? notes, meetingLink, customCourseName, facultyName;
+
   DateTime startOn(DateTime d) =>
       DateTime(d.year, d.month, d.day, startMinute ~/ 60, startMinute % 60);
   DateTime endOn(DateTime d) =>
       DateTime(d.year, d.month, d.day, endMinute ~/ 60, endMinute % 60);
+
   ClassSession copyWith({
+    String? id,
+    String? sectionId,
+    String? courseId,
     int? weekday,
     int? startMinute,
     int? endMinute,
     String? room,
+    bool? isLab,
+    bool? isOnline,
     bool? cancelled,
     bool? changed,
+    DateTime? specificDate,
+    bool? isTemporary,
+    bool? isShifted,
+    DateTime? originalDate,
+    String? originalTimeLabel,
+    String? notes,
+    String? meetingLink,
+    String? customCourseName,
+    String? facultyName,
   }) => ClassSession(
-    id: id,
-    sectionId: sectionId,
-    courseId: courseId,
+    id: id ?? this.id,
+    sectionId: sectionId ?? this.sectionId,
+    courseId: courseId ?? this.courseId,
     weekday: weekday ?? this.weekday,
     startMinute: startMinute ?? this.startMinute,
     endMinute: endMinute ?? this.endMinute,
     room: room ?? this.room,
-    isLab: isLab,
-    isOnline: isOnline,
+    isLab: isLab ?? this.isLab,
+    isOnline: isOnline ?? this.isOnline,
     cancelled: cancelled ?? this.cancelled,
     changed: changed ?? this.changed,
+    specificDate: specificDate ?? this.specificDate,
+    isTemporary: isTemporary ?? this.isTemporary,
+    isShifted: isShifted ?? this.isShifted,
+    originalDate: originalDate ?? this.originalDate,
+    originalTimeLabel: originalTimeLabel ?? this.originalTimeLabel,
+    notes: notes ?? this.notes,
+    meetingLink: meetingLink ?? this.meetingLink,
+    customCourseName: customCourseName ?? this.customCourseName,
+    facultyName: facultyName ?? this.facultyName,
   );
   @override
   List<Object?> get props => [
@@ -78,6 +117,15 @@ class ClassSession extends Equatable {
     isOnline,
     cancelled,
     changed,
+    specificDate,
+    isTemporary,
+    isShifted,
+    originalDate,
+    originalTimeLabel,
+    notes,
+    meetingLink,
+    customCourseName,
+    facultyName,
   ];
 }
 

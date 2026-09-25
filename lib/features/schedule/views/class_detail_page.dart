@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' hide Badge;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/format.dart';
+import '../../../core/models.dart';
 import '../../../design_system/tokens.dart';
 import '../../../shared/widgets/primitives.dart';
 import '../../campus/bloc/campus_bloc.dart';
@@ -9,6 +10,8 @@ import '../../campus/views/faculty_page.dart';
 import '../../profile/bloc/profile_bloc.dart';
 import '../bloc/schedule_bloc.dart';
 import 'routine_editor.dart';
+import 'shift_class_sheet.dart';
+import 'temporary_class_sheet.dart';
 
 class ClassDetailPage extends StatelessWidget {
   const ClassDetailPage({
@@ -16,49 +19,164 @@ class ClassDetailPage extends StatelessWidget {
     required this.sessionId,
     required this.day,
   });
+
   final String sessionId;
   final DateTime day;
+
   @override
   Widget build(BuildContext context) {
     final s = context.watch<ScheduleBloc>().state;
-    final session = s.sessions.where((v) => v.id == sessionId).firstOrNull;
+    final exactSession = s.sessions.where((v) => v.id == sessionId).firstOrNull;
+    final overrideId = '${sessionId.split('-override-').first}-override-${day.year}-${day.month}-${day.day}';
+    final overrideSession = s.sessions.where((v) => v.id == overrideId).firstOrNull;
+    final session = overrideSession ??
+        exactSession ??
+        s.sessions.where((v) => v.id == sessionId.split('-override-').first).firstOrNull;
+
     if (session == null) {
       return const DetailPage(
         title: 'Class',
         child: EmptyState('Class not found.', 'The routine may have changed.'),
       );
     }
+
     final course = s.course(session.courseId);
+    final courseName = session.customCourseName?.isNotEmpty == true
+        ? session.customCourseName!
+        : course.name;
+
     final faculty = context
         .watch<CampusBloc>()
         .state
         .faculty
         .where((f) => f.id == course.facultyId)
         .firstOrNull;
+
     final canManage = context
         .watch<ProfileBloc>()
         .state
         .profile
         .membership
         .canManage;
+
     return DetailPage(
-      title: session.isLab ? 'Lab session' : 'Class',
+      title: session.isTemporary
+          ? 'Temporary Class'
+          : (session.isLab ? 'Lab session' : 'Class'),
       actions: [
-        if (canManage)
+        if (canManage && session.isTemporary)
           IconButton(
-            tooltip: 'Edit repeating class',
-            onPressed: () =>
-                openSheet(context, RoutineEditor(session: session)),
+            tooltip: 'Edit temporary class',
+            onPressed: () => openSheet(
+              context,
+              TemporaryClassSheet(initialDate: day, sessionToEdit: session),
+            ),
+            icon: const Icon(CupertinoIcons.pencil, size: 20),
+          )
+        else if (canManage)
+          IconButton(
+            tooltip: 'Edit repeating routine',
+            onPressed: () => openSheet(context, RoutineEditor(session: session)),
             icon: const Icon(CupertinoIcons.pencil, size: 20),
           ),
       ],
       child: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          Badge(course.code ?? 'Course'),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              if (session.isTemporary)
+                Badge(
+                  'TEMPORARY CLASS',
+                  color: context.colors.amber,
+                  background: context.colors.amberBg,
+                )
+              else if (session.isShifted)
+                Badge(
+                  'SHIFTED CLASS',
+                  color: context.colors.sage,
+                  background: context.colors.sageBg,
+                )
+              else
+                Badge(course.code ?? 'Course'),
+              if (session.isOnline)
+                Badge(
+                  'ONLINE',
+                  color: context.colors.ink,
+                  background: context.colors.subtle,
+                ),
+              if (session.cancelled)
+                Badge(
+                  'CANCELLED',
+                  color: context.colors.red,
+                  background: context.colors.redBg,
+                ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Text(
+            courseName,
+            style: context.type.headlineLarge?.copyWith(
+              decoration: session.cancelled ? TextDecoration.lineThrough : null,
+              color: session.cancelled ? context.colors.faint : null,
+            ),
+          ),
           const SizedBox(height: 20),
-          Text(course.name, style: context.type.headlineLarge),
-          const SizedBox(height: 24),
+
+          if (session.cancelled) ...[
+            Surface(
+              color: context.colors.redBg,
+              border: false,
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  Icon(CupertinoIcons.clear_circled_solid, color: context.colors.red, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'This class is cancelled on ${Fmt.fullDate(day)}.',
+                      style: TextStyle(
+                        color: context.colors.red,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          if (session.isShifted) ...[
+            Surface(
+              color: context.colors.sageBg,
+              border: false,
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  Icon(CupertinoIcons.arrow_right_arrow_left, color: context.colors.sage, size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      session.notes?.isNotEmpty == true
+                          ? session.notes!
+                          : 'Shifted from ${session.originalTimeLabel ?? (session.originalDate != null ? Fmt.fullDate(session.originalDate!) : "original routine")}',
+                      style: TextStyle(
+                        color: context.colors.sage,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
           Surface(
             child: Column(
               children: [
@@ -72,40 +190,116 @@ class ClassDetailPage extends StatelessWidget {
                   icon: CupertinoIcons.clock,
                   trailing: const SizedBox(),
                 ),
-                SettingsRow(
-                  session.room == null
-                      ? 'Room to be announced'
-                      : 'Room ${session.room}',
-                  icon: CupertinoIcons.location,
-                  trailing: const SizedBox(),
-                ),
+                if (session.isOnline)
+                  SettingsRow(
+                    session.meetingLink != null && session.meetingLink!.isNotEmpty
+                        ? session.meetingLink!
+                        : 'Online meeting',
+                    subtitle: 'Online Class Link',
+                    icon: CupertinoIcons.videocam,
+                    trailing: const SizedBox(),
+                  )
+                else
+                  SettingsRow(
+                    session.room == null || session.room!.isEmpty
+                        ? 'Room to be announced'
+                        : 'Room ${session.room}',
+                    icon: CupertinoIcons.location,
+                    trailing: const SizedBox(),
+                  ),
               ],
             ),
           ),
-          if (session.cancelled) ...[
-            const SizedBox(height: 16),
-            const ErrorNotice(
-              'This class is cancelled in the current routine.',
+
+          if (session.notes != null && session.notes!.isNotEmpty) ...[
+            const SectionHeader('Instructions & Notes'),
+            Surface(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                session.notes!,
+                style: context.type.bodyMedium?.copyWith(height: 1.4),
+              ),
             ),
           ],
-          if (session.changed) ...[
-            const SizedBox(height: 16),
-            Badge(
-              'Routine updated',
-              color: context.colors.sage,
-              background: context.colors.sageBg,
+
+          if (session.facultyName != null && session.facultyName!.isNotEmpty) ...[
+            const SectionHeader('Course faculty'),
+            SettingsRow(
+              session.facultyName!,
+              icon: CupertinoIcons.person,
+              trailing: const SizedBox(),
             ),
-          ],
-          if (faculty != null) ...[
+          ] else if (faculty != null) ...[
             const SectionHeader('Course faculty'),
             SettingsRow(
               faculty.name,
               subtitle: faculty.designation,
               icon: CupertinoIcons.person,
-              onTap: () =>
-                  openPage(context, FacultyProfilePage(member: faculty)),
+              onTap: () => openPage(context, FacultyProfilePage(member: faculty)),
             ),
           ],
+
+          if (canManage) ...[
+            const SectionHeader('Admin options'),
+            if (session.isTemporary) ...[
+              SettingsRow(
+                'Edit temporary class',
+                subtitle: 'Update schedule, room/link or instructions',
+                icon: CupertinoIcons.pencil,
+                onTap: () => openSheet(
+                  context,
+                  TemporaryClassSheet(initialDate: day, sessionToEdit: session),
+                ),
+              ),
+              SettingsRow(
+                'Remove temporary class',
+                subtitle: 'Delete from schedule and inform students',
+                icon: CupertinoIcons.trash,
+                onTap: () => _confirmDeleteTemp(context, session),
+              ),
+            ] else ...[
+              SettingsRow(
+                session.cancelled ? 'Restore class for this date' : 'Cancel class for this date',
+                subtitle: session.cancelled
+                    ? 'Reinstate class on ${Fmt.shortDate(day)} and inform students'
+                    : 'Cancel slot on ${Fmt.shortDate(day)} and notify students',
+                icon: session.cancelled
+                    ? CupertinoIcons.arrow_counterclockwise
+                    : CupertinoIcons.clear_circled,
+                onTap: () {
+                  context.read<ScheduleBloc>().add(
+                    CancelSessionOnDateRequested(
+                      session: session,
+                      date: day,
+                      cancel: !session.cancelled,
+                    ),
+                  );
+                  feedback(
+                    context,
+                    session.cancelled
+                        ? 'Class restored for ${Fmt.shortDate(day)}.'
+                        : 'Class cancelled for ${Fmt.shortDate(day)}.',
+                  );
+                },
+              ),
+              SettingsRow(
+                'Shift class to another date / slot',
+                subtitle: 'Move class & attached events to another schedule',
+                icon: CupertinoIcons.arrow_right_arrow_left,
+                onTap: () => openSheet(
+                  context,
+                  ShiftClassSheet(session: session, sourceDate: day),
+                ),
+              ),
+              SettingsRow(
+                'Edit repeating weekly routine',
+                subtitle: 'Change permanent weekly timetable for this section',
+                icon: CupertinoIcons.slider_horizontal_3,
+                onTap: () => openSheet(context, RoutineEditor(session: session)),
+              ),
+            ],
+          ],
+
           const SectionHeader('Class reminder'),
           Text(
             '${Fmt.offsets(context.watch<ProfileBloc>().state.profile.reminders.classOffsets)} before class',
@@ -117,6 +311,35 @@ class ClassDetailPage extends StatelessWidget {
             style: context.type.bodyMedium?.copyWith(
               color: context.colors.secondary,
             ),
+          ),
+          const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteTemp(BuildContext context, ClassSession session) {
+    showCupertinoDialog(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: const Text('Delete Temporary Class'),
+        content: const Text('Are you sure you want to remove this temporary class? Students will be notified.'),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(ctx),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            child: const Text('Delete'),
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<ScheduleBloc>().add(
+                TemporaryClassDeleteRequested(session.id),
+              );
+              Navigator.pop(context);
+              feedback(context, 'Temporary class removed.');
+            },
           ),
         ],
       ),

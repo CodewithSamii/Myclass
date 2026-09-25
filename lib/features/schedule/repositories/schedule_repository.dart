@@ -8,6 +8,23 @@ abstract interface class ScheduleRepository {
   Future<void> saveTimeSlots(String sectionId, List<TimeSlot> slots);
   Future<void> saveRoutine(String sectionId, List<ClassSession> sessions);
   Future<void> saveSession(ClassSession session);
+  Future<void> cancelSessionOnDate({
+    required String sectionId,
+    required ClassSession session,
+    required DateTime date,
+    required bool cancel,
+  });
+  Future<void> shiftSession({
+    required String sectionId,
+    required ClassSession session,
+    required DateTime sourceDate,
+    required DateTime targetDate,
+    required int newStartMinute,
+    required int newEndMinute,
+    String? newRoom,
+  });
+  Future<void> saveTemporaryClass(ClassSession session);
+  Future<void> deleteTemporaryClass(String sectionId, String sessionId);
   Future<void> refresh();
 }
 

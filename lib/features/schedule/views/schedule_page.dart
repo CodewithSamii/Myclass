@@ -18,6 +18,7 @@ import '../../section_admin/views/set_slots_page.dart';
 import '../../section_admin/views/set_routine_page.dart';
 import '../bloc/schedule_bloc.dart';
 import 'class_detail_page.dart';
+import 'temporary_class_sheet.dart';
 
 class SchedulePage extends StatelessWidget {
   const SchedulePage({super.key});
@@ -114,6 +115,25 @@ class SchedulePage extends StatelessWidget {
                   ),
                 ],
               ),
+              if (profile.membership.canManage || profile.membership.isOwner) ...[
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    TextButton.icon(
+                      onPressed: () => openSheet(
+                        context,
+                        TemporaryClassSheet(initialDate: s.selected),
+                      ),
+                      icon: const Icon(CupertinoIcons.calendar_badge_plus, size: 14),
+                      label: const Text('+ Temp Class'),
+                      style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
 
               if (dueToday.isNotEmpty) ...[
                 const SizedBox(height: 10),
@@ -414,6 +434,8 @@ class _TwoColumnScheduleTable extends StatelessWidget {
       );
     }
 
+    final allCancelled = entries.isNotEmpty && AgendaProjection.isAllCancelled(entries);
+
     return Container(
       decoration: BoxDecoration(
         color: c.surface,
@@ -422,6 +444,45 @@ class _TwoColumnScheduleTable extends StatelessWidget {
       ),
       child: Column(
         children: [
+          if (allCancelled)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              margin: const EdgeInsets.fromLTRB(12, 12, 12, 6),
+              decoration: BoxDecoration(
+                color: c.redBg,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: c.red.withOpacity(0.35)),
+              ),
+              child: Row(
+                children: [
+                  Icon(CupertinoIcons.clear_circled_solid, color: c.red, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'No classes today',
+                          style: TextStyle(
+                            color: c.red,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'All classes scheduled for today have been cancelled by class admin.',
+                          style: TextStyle(
+                            color: c.ink,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           // Table header
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -586,13 +647,62 @@ class _ScheduleTableRow extends StatelessWidget {
                     spacing: 6,
                     runSpacing: 2,
                     children: [
-                      Text(
-                        entry.course.compactName,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: c.secondary,
+                      if (entry.isTemporary)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: c.amberBg,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'TEMPORARY CLASS',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: c.amber,
+                            ),
+                          ),
                         ),
-                      ),
+                      if (entry.isShifted)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: c.sageBg,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'SHIFTED',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: c.sage,
+                            ),
+                          ),
+                        ),
+                      if (entry.session?.isOnline == true)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: c.subtle,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'ONLINE',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: c.ink,
+                            ),
+                          ),
+                        ),
+                      if (!entry.isTemporary)
+                        Text(
+                          entry.course.compactName,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: c.secondary,
+                          ),
+                        ),
                       if (entry.session?.isLab == true)
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),

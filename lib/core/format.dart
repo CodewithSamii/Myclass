@@ -29,6 +29,7 @@ abstract final class Fmt {
   static String month(DateTime d, {bool short = false}) =>
       short ? months[d.month - 1].substring(0, 3) : months[d.month - 1];
   static String date(DateTime d) => '${month(d, short: true)} ${d.day}';
+  static String shortDate(DateTime d) => date(d);
   static String fullDate(DateTime d) => '${weekday(d)} · ${date(d)}';
   static String time(DateTime d, {bool suffix = true}) =>
       '${d.hour % 12 == 0 ? 12 : d.hour % 12}:${d.minute.toString().padLeft(2, '0')}${suffix ? ' ${d.hour < 12 ? 'AM' : 'PM'}' : ''}';

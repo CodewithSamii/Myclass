@@ -17,14 +17,33 @@ class AgendaEntry {
   final List<AcademicEvent> events;
   final ClassSession? session;
   String get id => event?.id ?? (events.isNotEmpty ? events.first.id : '${session!.id}-${day.toIso8601String()}');
-  String get title => event?.title ?? course.name;
+  String get title =>
+      event?.title ??
+      (session?.customCourseName?.isNotEmpty == true
+          ? session!.customCourseName!
+          : course.name);
   bool get cancelled =>
       event?.status == EventStatus.cancelled || session?.cancelled == true;
   bool get deadline => event?.deadline != null;
   DateTime? get end => event?.endsAt ?? session?.endOn(day);
   bool get timeUnknown =>
       event != null && event!.startsAt == null && event!.deadline == null;
+  bool get isTemporary => session?.isTemporary == true;
+  bool get isShifted => session?.isShifted == true;
+  bool get isOnline => session?.isOnline == true;
+  String? get notes => session?.notes;
+  String? get meetingLink => session?.meetingLink;
+  String? get facultyName => session?.facultyName;
+  DateTime? get originalDate => session?.originalDate;
+  String? get originalTimeLabel => session?.originalTimeLabel;
+
   String get location {
+    if (session?.isOnline == true) {
+      if (session?.meetingLink != null && session!.meetingLink!.trim().isNotEmpty) {
+        return session!.meetingLink!;
+      }
+      return 'Online meeting';
+    }
     final value = event?.location ?? session?.room;
     return value == null || value.trim().isEmpty
         ? 'Room to be announced'
@@ -33,7 +52,11 @@ class AgendaEntry {
 
   String get timeLabel => timeUnknown ? 'TBA' : Fmt.time(at, suffix: false);
   String get typeLabel =>
-      event?.type.label ?? (session!.isLab ? 'Lab' : 'Class');
+      isTemporary
+          ? 'Temporary Class'
+          : isShifted
+          ? 'Shifted Class'
+          : event?.type.label ?? (session!.isLab ? 'Lab' : 'Class');
 }
 
 abstract final class AgendaProjection {
@@ -45,18 +68,49 @@ abstract final class AgendaProjection {
     bool omitRoutine = false,
     List<AcademicPeriod> periods = const [],
   }) {
-    Course course(String id) => courses.firstWhere(
+    Course course(String id, {String? customName, String? facultyName}) => courses.firstWhere(
       (c) => c.id == id,
       orElse: () => Course(
         id: id,
-        name: 'Course details pending',
-        facultyId: '',
+        name: customName?.isNotEmpty == true ? customName! : 'Course details pending',
+        facultyId: facultyName ?? '',
         departmentId: '',
       ),
     );
 
     final dayEvents = events.where((e) => sameDay(e.date, day)).toList();
-    final daySessions = sessions.where((s) => s.weekday == day.weekday).toList();
+
+    // 1. Recurring weekly sessions for this weekday (where specificDate is null)
+    final recurringSessions = sessions
+        .where((s) => s.specificDate == null && s.weekday == day.weekday)
+        .toList();
+
+    // 2. Specific-date sessions on this exact day (shifts, cancellations, temporary classes)
+    final specificDateSessions = sessions
+        .where((s) => s.specificDate != null && sameDay(s.specificDate!, day))
+        .toList();
+
+    final daySessions = <ClassSession>[];
+
+    // For each recurring session, check if there's a specific-date override for today
+    for (final rec in recurringSessions) {
+      final overrideId = '${rec.id}-override-${day.year}-${day.month}-${day.day}';
+      final override = specificDateSessions.firstWhere(
+        (sp) => sp.id == overrideId || sp.id == rec.id,
+        orElse: () => rec,
+      );
+      daySessions.add(override);
+    }
+
+    // Add any specific-date sessions that are not overrides of recurring sessions (e.g. temporary classes or shifted-in classes)
+    for (final sp in specificDateSessions) {
+      final isOverride = recurringSessions.any(
+        (rec) => sp.id == '${rec.id}-override-${day.year}-${day.month}-${day.day}' || sp.id == rec.id,
+      );
+      if (!isOverride) {
+        daySessions.add(sp);
+      }
+    }
 
     final list = <AgendaEntry>[];
 
@@ -67,7 +121,7 @@ abstract final class AgendaProjection {
           AgendaEntry(
             at: s.startOn(day),
             day: day,
-            course: course(s.courseId),
+            course: course(s.courseId, customName: s.customCourseName, facultyName: s.facultyName),
             session: s,
             events: matchingEvents,
             event: matchingEvents.isNotEmpty ? matchingEvents.first : null,
@@ -97,6 +151,11 @@ abstract final class AgendaProjection {
       return a.at.compareTo(b.at);
     });
     return list;
+  }
+
+  static bool isAllCancelled(List<AgendaEntry> entries) {
+    if (entries.isEmpty) return false;
+    return entries.every((e) => e.cancelled);
   }
 
   static List<AgendaEntry> conflicts(List<AgendaEntry> entries) => entries

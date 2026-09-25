@@ -120,6 +120,42 @@ class TimeSlotsSaveRequested extends ScheduleEvent {
   final List<TimeSlot> slots;
 }
 
+class CancelSessionOnDateRequested extends ScheduleEvent {
+  CancelSessionOnDateRequested({
+    required this.session,
+    required this.date,
+    required this.cancel,
+  });
+  final ClassSession session;
+  final DateTime date;
+  final bool cancel;
+}
+
+class ShiftSessionRequested extends ScheduleEvent {
+  ShiftSessionRequested({
+    required this.session,
+    required this.sourceDate,
+    required this.targetDate,
+    required this.newStartMinute,
+    required this.newEndMinute,
+    this.newRoom,
+  });
+  final ClassSession session;
+  final DateTime sourceDate, targetDate;
+  final int newStartMinute, newEndMinute;
+  final String? newRoom;
+}
+
+class TemporaryClassSaveRequested extends ScheduleEvent {
+  TemporaryClassSaveRequested(this.session);
+  final ClassSession session;
+}
+
+class TemporaryClassDeleteRequested extends ScheduleEvent {
+  TemporaryClassDeleteRequested(this.sessionId);
+  final String sessionId;
+}
+
 class ScheduleBloc extends Bloc<ScheduleEvent, ScheduleState> {
   ScheduleBloc(this.repository, this.clock, this.section)
     : super(ScheduleState(selected: dateOnly(clock.now), now: clock.now)) {
@@ -202,6 +238,61 @@ class ScheduleBloc extends Bloc<ScheduleEvent, ScheduleState> {
       try {
         await repository.saveTimeSlots(section, e.slots);
         emit(state.copyWith(timeSlots: e.slots, saving: false));
+      } on AppFailure catch (f) {
+        emit(state.copyWith(saving: false, error: f.message));
+      }
+    });
+    on<CancelSessionOnDateRequested>((e, emit) async {
+      emit(state.copyWith(saving: true));
+      try {
+        await repository.cancelSessionOnDate(
+          sectionId: section,
+          session: e.session,
+          date: e.date,
+          cancel: e.cancel,
+        );
+        emit(state.copyWith(saving: false));
+      } on AppFailure catch (f) {
+        emit(state.copyWith(saving: false, error: f.message));
+      }
+    });
+    on<ShiftSessionRequested>((e, emit) async {
+      emit(state.copyWith(saving: true));
+      try {
+        if (e.newEndMinute <= e.newStartMinute) {
+          throw const AppFailure('The shifted class must end after it starts.');
+        }
+        await repository.shiftSession(
+          sectionId: section,
+          session: e.session,
+          sourceDate: e.sourceDate,
+          targetDate: e.targetDate,
+          newStartMinute: e.newStartMinute,
+          newEndMinute: e.newEndMinute,
+          newRoom: e.newRoom,
+        );
+        emit(state.copyWith(saving: false));
+      } on AppFailure catch (f) {
+        emit(state.copyWith(saving: false, error: f.message));
+      }
+    });
+    on<TemporaryClassSaveRequested>((e, emit) async {
+      emit(state.copyWith(saving: true));
+      try {
+        if (e.session.endMinute <= e.session.startMinute) {
+          throw const AppFailure('The class must end after it starts.');
+        }
+        await repository.saveTemporaryClass(e.session);
+        emit(state.copyWith(saving: false));
+      } on AppFailure catch (f) {
+        emit(state.copyWith(saving: false, error: f.message));
+      }
+    });
+    on<TemporaryClassDeleteRequested>((e, emit) async {
+      emit(state.copyWith(saving: true));
+      try {
+        await repository.deleteTemporaryClass(section, e.sessionId);
+        emit(state.copyWith(saving: false));
       } on AppFailure catch (f) {
         emit(state.copyWith(saving: false, error: f.message));
       }
