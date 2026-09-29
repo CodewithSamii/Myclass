@@ -63,6 +63,23 @@ class Attachment extends Equatable {
   });
   final String id, name, sizeLabel, preview;
   final AttachmentKind kind;
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'kind': kind.name,
+    'sizeLabel': sizeLabel,
+    'preview': preview,
+  };
+
+  factory Attachment.fromJson(Map<String, dynamic> j) => Attachment(
+    id: j['id'] ?? '',
+    name: j['name'] ?? '',
+    kind: AttachmentKind.values.byName(j['kind']),
+    sizeLabel: j['sizeLabel'] ?? '',
+    preview: j['preview'] ?? '',
+  );
+
   @override
   List<Object?> get props => [id, name, kind, sizeLabel, preview];
 }
@@ -78,6 +95,25 @@ class ScheduleChange extends Equatable {
   });
   final String id, label, before, after, author;
   final DateTime at;
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'label': label,
+    'before': before,
+    'after': after,
+    'at': at.toIso8601String(),
+    'author': author,
+  };
+
+  factory ScheduleChange.fromJson(Map<String, dynamic> j) => ScheduleChange(
+    id: j['id'] ?? '',
+    label: j['label'] ?? '',
+    before: j['before'] ?? '',
+    after: j['after'] ?? '',
+    at: DateTime.parse(j['at']),
+    author: j['author'] ?? '',
+  );
+
   @override
   List<Object?> get props => [id, label, before, after, at, author];
 }
@@ -132,6 +168,7 @@ class AcademicEvent extends Equatable {
       deadline != null && deadline!.isBefore(now) && actionable
       ? 'Deadline passed'
       : status.label;
+
   AcademicEvent copyWith({
     String? title,
     AcademicEventType? type,
@@ -172,6 +209,57 @@ class AcademicEvent extends Equatable {
     changeHistory: changeHistory ?? this.changeHistory,
     suggestedReminders: suggestedReminders ?? this.suggestedReminders,
   );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'title': title,
+    'type': type.name,
+    'courseId': courseId,
+    'date': date.toIso8601String(),
+    'sectionId': sectionId,
+    'createdAt': createdAt.toIso8601String(),
+    'updatedAt': updatedAt.toIso8601String(),
+    'startsAt': startsAt?.toIso8601String(),
+    'endsAt': endsAt?.toIso8601String(),
+    'deadline': deadline?.toIso8601String(),
+    'location': location,
+    'description': description,
+    'syllabus': syllabus,
+    'instructions': instructions,
+    'attachments': attachments.map((a) => a.toJson()).toList(),
+    'createdBy': createdBy,
+    'status': status.name,
+    'changeHistory': changeHistory.map((c) => c.toJson()).toList(),
+    'suggestedReminders': suggestedReminders,
+  };
+
+  factory AcademicEvent.fromJson(Map<String, dynamic> j) => AcademicEvent(
+    id: j['id'] ?? '',
+    title: j['title'] ?? '',
+    type: AcademicEventType.values.byName(j['type'] ?? 'general'),
+    courseId: j['courseId'] ?? '',
+    date: DateTime.parse(j['date']),
+    sectionId: j['sectionId'] ?? '',
+    createdAt: DateTime.parse(j['createdAt']),
+    updatedAt: DateTime.parse(j['updatedAt']),
+    startsAt: j['startsAt'] != null ? DateTime.tryParse(j['startsAt']) : null,
+    endsAt: j['endsAt'] != null ? DateTime.tryParse(j['endsAt']) : null,
+    deadline: j['deadline'] != null ? DateTime.tryParse(j['deadline']) : null,
+    location: j['location'],
+    description: j['description'] ?? '',
+    syllabus: j['syllabus'] != null ? List<String>.from(j['syllabus']) : const [],
+    instructions: j['instructions'] ?? '',
+    attachments: j['attachments'] != null
+        ? (j['attachments'] as List).map((a) => Attachment.fromJson(Map<String, dynamic>.from(a))).toList()
+        : const [],
+    createdBy: j['createdBy'] ?? 'Class representative',
+    status: EventStatus.values.byName(j['status'] ?? 'scheduled'),
+    changeHistory: j['changeHistory'] != null
+        ? (j['changeHistory'] as List).map((c) => ScheduleChange.fromJson(Map<String, dynamic>.from(c))).toList()
+        : const [],
+    suggestedReminders: j['suggestedReminders'] != null ? List<int>.from(j['suggestedReminders']) : null,
+  );
+
   @override
   List<Object?> get props => [
     id,
@@ -209,6 +297,25 @@ class UpdateFeedItem extends Equatable {
   final String id, eventId, title, detail;
   final String? sessionId;
   final DateTime at;
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'sessionId': sessionId,
+    'eventId': eventId,
+    'title': title,
+    'detail': detail,
+    'at': at.toIso8601String(),
+  };
+
+  factory UpdateFeedItem.fromJson(Map<String, dynamic> j) => UpdateFeedItem(
+    id: j['id'] ?? '',
+    sessionId: j['sessionId'],
+    eventId: j['eventId'] ?? '',
+    title: j['title'] ?? '',
+    detail: j['detail'] ?? '',
+    at: DateTime.parse(j['at']),
+  );
+
   @override
   List<Object?> get props => [id, eventId, sessionId, title, detail, at];
 }

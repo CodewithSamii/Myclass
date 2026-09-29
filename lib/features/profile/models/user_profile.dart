@@ -205,6 +205,20 @@ class PersonalProgress extends Equatable {
     completed: completed ?? this.completed,
     reminderOffsets: inherit ? null : reminderOffsets ?? this.reminderOffsets,
   );
+  Map<String, dynamic> toJson() => {
+    'eventId': eventId,
+    'completed': completed,
+    'reminderOffsets': reminderOffsets,
+  };
+
+  factory PersonalProgress.fromJson(Map<String, dynamic> j) => PersonalProgress(
+    eventId: j['eventId'] ?? '',
+    completed: j['completed'] ?? false,
+    reminderOffsets: j['reminderOffsets'] != null
+        ? List<int>.from(j['reminderOffsets'])
+        : null,
+  );
+
   @override
   List<Object?> get props => [eventId, completed, reminderOffsets];
 }

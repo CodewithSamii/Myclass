@@ -12,6 +12,25 @@ class Course extends Equatable {
   final String id, name, facultyId, departmentId;
   final String? code, shortName;
   String get compactName => shortName ?? name;
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'code': code,
+    'facultyId': facultyId,
+    'departmentId': departmentId,
+    'shortName': shortName,
+  };
+
+  factory Course.fromJson(Map<String, dynamic> j) => Course(
+    id: j['id'] ?? '',
+    name: j['name'] ?? '',
+    code: j['code'],
+    facultyId: j['facultyId'] ?? '',
+    departmentId: j['departmentId'] ?? '',
+    shortName: j['shortName'],
+  );
+
   @override
   List<Object?> get props => [
     id,
@@ -104,6 +123,53 @@ class ClassSession extends Equatable {
     customCourseName: customCourseName ?? this.customCourseName,
     facultyName: facultyName ?? this.facultyName,
   );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'sectionId': sectionId,
+    'courseId': courseId,
+    'weekday': weekday,
+    'startMinute': startMinute,
+    'endMinute': endMinute,
+    'room': room,
+    'isLab': isLab,
+    'isOnline': isOnline,
+    'cancelled': cancelled,
+    'changed': changed,
+    'specificDate': specificDate?.toIso8601String(),
+    'isTemporary': isTemporary,
+    'isShifted': isShifted,
+    'originalDate': originalDate?.toIso8601String(),
+    'originalTimeLabel': originalTimeLabel,
+    'notes': notes,
+    'meetingLink': meetingLink,
+    'customCourseName': customCourseName,
+    'facultyName': facultyName,
+  };
+
+  factory ClassSession.fromJson(Map<String, dynamic> j) => ClassSession(
+    id: j['id'] ?? '',
+    sectionId: j['sectionId'] ?? '',
+    courseId: j['courseId'] ?? '',
+    weekday: j['weekday'] ?? 1,
+    startMinute: j['startMinute'] ?? 0,
+    endMinute: j['endMinute'] ?? 0,
+    room: j['room'],
+    isLab: j['isLab'] ?? false,
+    isOnline: j['isOnline'] ?? false,
+    cancelled: j['cancelled'] ?? false,
+    changed: j['changed'] ?? false,
+    specificDate: j['specificDate'] != null ? DateTime.tryParse(j['specificDate']) : null,
+    isTemporary: j['isTemporary'] ?? false,
+    isShifted: j['isShifted'] ?? false,
+    originalDate: j['originalDate'] != null ? DateTime.tryParse(j['originalDate']) : null,
+    originalTimeLabel: j['originalTimeLabel'],
+    notes: j['notes'],
+    meetingLink: j['meetingLink'],
+    customCourseName: j['customCourseName'],
+    facultyName: j['facultyName'],
+  );
+
   @override
   List<Object?> get props => [
     id,
@@ -145,6 +211,20 @@ class AcademicPeriod extends Equatable {
     return !d.isBefore(start) && !d.isAfter(end);
   }
 
+  Map<String, dynamic> toJson() => {
+    'title': title,
+    'start': start.toIso8601String(),
+    'end': end.toIso8601String(),
+    'classesSuspended': classesSuspended,
+  };
+
+  factory AcademicPeriod.fromJson(Map<String, dynamic> j) => AcademicPeriod(
+    title: j['title'] ?? '',
+    start: DateTime.parse(j['start']),
+    end: DateTime.parse(j['end']),
+    classesSuspended: j['classesSuspended'] ?? false,
+  );
+
   @override
   List<Object?> get props => [title, start, end, classesSuspended];
 }
@@ -174,7 +254,6 @@ class TimeSlot extends Equatable {
     return '$hour12$minStr $period';
   }
 
-
   TimeSlot copyWith({
     String? id,
     String? label,
@@ -189,7 +268,22 @@ class TimeSlot extends Equatable {
     orderIndex: orderIndex ?? this.orderIndex,
   );
 
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'label': label,
+    'startMinute': startMinute,
+    'endMinute': endMinute,
+    'orderIndex': orderIndex,
+  };
+
+  factory TimeSlot.fromJson(Map<String, dynamic> j) => TimeSlot(
+    id: j['id'] ?? '',
+    label: j['label'] ?? '',
+    startMinute: j['startMinute'] ?? 0,
+    endMinute: j['endMinute'] ?? 0,
+    orderIndex: j['orderIndex'] ?? 0,
+  );
+
   @override
   List<Object?> get props => [id, label, startMinute, endMinute, orderIndex];
 }
-

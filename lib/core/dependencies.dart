@@ -88,12 +88,12 @@ class AppDependencies {
     final subscription = defaultDemo.stream.listen((_) => defaultStore.notify());
     return AppDependencies(
       auth: auth ?? FirebaseAuthRepository(preferences: preferences),
-      structure: structure ?? MockAcademicStructureRepository(),
-      events: events ?? MockEventRepository(defaultStore),
-      schedule: schedule ?? MockScheduleRepository(defaultStore),
-      profiles: profiles ?? MockProfileRepository(defaultStore, preferences),
-      progress: progress ?? MockProgressRepository(defaultStore),
-      notes: notes ?? MockNotesRepository(defaultStore),
+      structure: structure ?? FirestoreAcademicStructureRepository(),
+      events: events ?? FirestoreEventRepository(),
+      schedule: schedule ?? FirestoreScheduleRepository(),
+      profiles: profiles ?? FirestoreProfileRepository(preferences: preferences),
+      progress: progress ?? FirestoreProgressRepository(),
+      notes: notes ?? FirestoreNotesRepository(),
       buses: buses ?? MockBusRepository(),
       faculty: faculty ?? MockFacultyRepository(),
       search: search ?? MockSearchRepository(defaultStore),
