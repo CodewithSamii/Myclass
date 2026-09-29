@@ -1,4 +1,5 @@
 export '../features/auth/repositories/auth_repository.dart';
+export '../features/auth/repositories/firebase_auth_repository.dart';
 export '../features/onboarding/repositories/academic_structure_repository.dart';
 export '../features/schedule/repositories/schedule_repository.dart';
 export '../features/events/repositories/events_repository.dart';

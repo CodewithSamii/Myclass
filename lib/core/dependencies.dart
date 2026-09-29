@@ -28,6 +28,7 @@ class AppDependencies {
     required this.clock,
     void Function()? dispose,
   }) : _dispose = dispose;
+
   final AuthRepository auth;
   final AcademicStructureRepository structure;
   final EventRepository events;
@@ -41,6 +42,7 @@ class AppDependencies {
   final DemoController demo;
   final AppClock clock;
   final void Function()? _dispose;
+
   factory AppDependencies.mock(SharedPreferences preferences) {
     final demo = DemoController();
     final store = MockStore(demo);
@@ -65,5 +67,45 @@ class AppDependencies {
       },
     );
   }
+
+  factory AppDependencies.firebase({
+    required SharedPreferences preferences,
+    AuthRepository? auth,
+    AcademicStructureRepository? structure,
+    EventRepository? events,
+    ScheduleRepository? schedule,
+    ProfileRepository? profiles,
+    ProgressRepository? progress,
+    NotesRepository? notes,
+    BusRepository? buses,
+    FacultyRepository? faculty,
+    SearchRepository? search,
+    DemoController? demo,
+    AppClock? clock,
+  }) {
+    final defaultDemo = demo ?? DemoController();
+    final defaultStore = MockStore(defaultDemo);
+    final subscription = defaultDemo.stream.listen((_) => defaultStore.notify());
+    return AppDependencies(
+      auth: auth ?? FirebaseAuthRepository(preferences: preferences),
+      structure: structure ?? MockAcademicStructureRepository(),
+      events: events ?? MockEventRepository(defaultStore),
+      schedule: schedule ?? MockScheduleRepository(defaultStore),
+      profiles: profiles ?? MockProfileRepository(defaultStore, preferences),
+      progress: progress ?? MockProgressRepository(defaultStore),
+      notes: notes ?? MockNotesRepository(defaultStore),
+      buses: buses ?? MockBusRepository(),
+      faculty: faculty ?? MockFacultyRepository(),
+      search: search ?? MockSearchRepository(defaultStore),
+      demo: defaultDemo,
+      clock: clock ?? defaultDemo,
+      dispose: () {
+        subscription.cancel();
+        defaultStore.dispose();
+        defaultDemo.close();
+      },
+    );
+  }
+
   void dispose() => _dispose?.call();
 }

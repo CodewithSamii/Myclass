@@ -32,6 +32,22 @@ class AuthReturningRequested extends AuthEvent {}
 
 class AuthGoogleRequested extends AuthEvent {}
 
+class AuthEmailSignInRequested extends AuthEvent {
+  AuthEmailSignInRequested({required this.email, required this.password});
+  final String email, password;
+}
+
+class AuthEmailRegisterRequested extends AuthEvent {
+  AuthEmailRegisterRequested({
+    required this.email,
+    required this.password,
+    required this.name,
+  });
+  final String email, password, name;
+}
+
+class AuthAnonymousRequested extends AuthEvent {}
+
 class AuthSetupSaved extends AuthEvent {
   AuthSetupSaved(this.name, this.membership, this.grant);
   final String name;
@@ -51,7 +67,6 @@ class AuthSectionLoggedIn extends AuthEvent {
 }
 
 class AuthLoggedOut extends AuthEvent {}
-
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   AuthBloc(this.auth, this.profiles)
@@ -80,12 +95,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         );
       }
     });
+
     on<AuthBeginSetup>(
       (e, emit) => emit(AuthState(AuthPhase.setup, identity: state.identity)),
     );
+
     on<AuthReturningRequested>(
       (e, emit) => emit(const AuthState(AuthPhase.returning)),
     );
+
     on<AuthGoogleRequested>((e, emit) async {
       if (state.busy) return;
       emit(AuthState(state.phase, identity: state.identity, busy: true));
@@ -99,6 +117,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             profile: p,
           ),
         );
+      } on AppFailure catch (f) {
+        emit(
+          AuthState(
+            AuthPhase.returning,
+            error: f.message,
+          ),
+        );
       } catch (_) {
         emit(
           const AuthState(
@@ -108,6 +133,65 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         );
       }
     });
+
+    on<AuthEmailSignInRequested>((e, emit) async {
+      if (state.busy) return;
+      emit(AuthState(state.phase, identity: state.identity, busy: true));
+      try {
+        final id = await auth.signInWithEmail(e.email, e.password);
+        final p = await profiles.load(id.uid);
+        emit(
+          AuthState(
+            p == null ? AuthPhase.setup : AuthPhase.ready,
+            identity: id,
+            profile: p,
+          ),
+        );
+      } on AppFailure catch (f) {
+        emit(AuthState(state.phase, identity: state.identity, error: f.message));
+      } catch (err) {
+        emit(AuthState(state.phase, identity: state.identity, error: err.toString()));
+      }
+    });
+
+    on<AuthEmailRegisterRequested>((e, emit) async {
+      if (state.busy) return;
+      emit(AuthState(state.phase, identity: state.identity, busy: true));
+      try {
+        final id = await auth.registerWithEmail(e.email, e.password);
+        final p = await profiles.load(id.uid);
+        emit(
+          AuthState(
+            p == null ? AuthPhase.setup : AuthPhase.ready,
+            identity: id,
+            profile: p,
+          ),
+        );
+      } on AppFailure catch (f) {
+        emit(AuthState(state.phase, identity: state.identity, error: f.message));
+      } catch (err) {
+        emit(AuthState(state.phase, identity: state.identity, error: err.toString()));
+      }
+    });
+
+    on<AuthAnonymousRequested>((e, emit) async {
+      if (state.busy) return;
+      emit(AuthState(state.phase, identity: state.identity, busy: true));
+      try {
+        final id = await auth.signInAnonymously();
+        final p = await profiles.load(id.uid);
+        emit(
+          AuthState(
+            p == null ? AuthPhase.setup : AuthPhase.ready,
+            identity: id,
+            profile: p,
+          ),
+        );
+      } catch (err) {
+        emit(AuthState(state.phase, identity: state.identity, error: err.toString()));
+      }
+    });
+
     on<AuthSetupSaved>((e, emit) async {
       if (state.busy) return;
       emit(AuthState(AuthPhase.setup, identity: state.identity, busy: true));
@@ -140,17 +224,26 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         );
       }
     });
+
     on<AuthSectionLoggedIn>((e, emit) async {
       emit(AuthState(state.phase, identity: state.identity, profile: state.profile, busy: true));
       try {
-        final uid = state.identity?.uid ?? 'user-${DateTime.now().millisecondsSinceEpoch}';
-        final email = state.identity?.email ?? '${e.name.toLowerCase().replaceAll(RegExp(r'\s+'), '')}@example.com';
-        final id = state.identity ?? AuthIdentity(uid, email);
+        var id = state.identity;
+        if (id == null) {
+          try {
+            id = await auth.signInAnonymously();
+          } catch (_) {
+            final uid = 'user-${DateTime.now().millisecondsSinceEpoch}';
+            final email = '${e.name.toLowerCase().replaceAll(RegExp(r'\s+'), '')}@example.com';
+            id = AuthIdentity(uid, email);
+          }
+        }
         final p = UserProfile(
-
           uid: id.uid,
           name: e.name.trim(),
-          email: id.email,
+          email: id.email.isNotEmpty
+              ? id.email
+              : '${e.name.toLowerCase().replaceAll(RegExp(r'\s+'), '')}@example.com',
           memberships: [e.membership.withRole(e.grant.role)],
           activeSectionId: e.membership.sectionId,
         );
@@ -160,12 +253,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         emit(AuthState(state.phase, identity: state.identity, profile: state.profile, error: err.toString()));
       }
     });
+
     on<AuthLoggedOut>((e, emit) async {
       await auth.signOut();
       emit(const AuthState(AuthPhase.introduction));
     });
-
   }
+
   final AuthRepository auth;
   final ProfileRepository profiles;
 }
