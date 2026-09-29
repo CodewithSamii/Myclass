@@ -11,5 +11,7 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   final preferences = await SharedPreferences.getInstance();
-  runApp(MyClassApp(dependencies: AppDependencies.firebase(preferences: preferences)));
+  final dependencies = AppDependencies.firebase(preferences: preferences);
+  await dependencies.notifications.initialize();
+  runApp(MyClassApp(dependencies: dependencies));
 }

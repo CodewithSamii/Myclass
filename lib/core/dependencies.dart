@@ -11,6 +11,8 @@ import '../demo/mock_personal_repositories.dart';
 import '../demo/mock_campus_repositories.dart';
 import '../demo/mock_search_repository.dart';
 
+import 'notifications.dart';
+
 /// Composition root. Substitute adapters here when connecting real services.
 class AppDependencies {
   AppDependencies({
@@ -26,8 +28,10 @@ class AppDependencies {
     required this.search,
     required this.demo,
     required this.clock,
+    NotificationService? notifications,
     void Function()? dispose,
-  }) : _dispose = dispose;
+  })  : notifications = notifications ?? MockNotificationService(),
+        _dispose = dispose;
 
   final AuthRepository auth;
   final AcademicStructureRepository structure;
@@ -41,6 +45,7 @@ class AppDependencies {
   final SearchRepository search;
   final DemoController demo;
   final AppClock clock;
+  final NotificationService notifications;
   final void Function()? _dispose;
 
   factory AppDependencies.mock(SharedPreferences preferences) {
@@ -82,6 +87,7 @@ class AppDependencies {
     SearchRepository? search,
     DemoController? demo,
     AppClock? clock,
+    NotificationService? notifications,
   }) {
     final defaultDemo = demo ?? DemoController();
     final defaultStore = MockStore(defaultDemo);
@@ -99,6 +105,7 @@ class AppDependencies {
       search: search ?? MockSearchRepository(defaultStore),
       demo: defaultDemo,
       clock: clock ?? defaultDemo,
+      notifications: notifications ?? FirebaseNotificationService(),
       dispose: () {
         subscription.cancel();
         defaultStore.dispose();
