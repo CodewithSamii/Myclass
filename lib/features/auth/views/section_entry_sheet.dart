@@ -275,7 +275,7 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
     );
   }
 
-  void _authenticateAsOwner() {
+  void _authenticateAsOwner({String? ownerName}) {
     const membership = SectionMembership(
       sectionId: 'bsc-cse-64-I',
       departmentId: 'cse',
@@ -289,9 +289,13 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
       role: UserRole.myClassOwner,
     );
 
+    final displayName = (ownerName != null && ownerName.trim().isNotEmpty && ownerName.trim().toLowerCase() != 'owner')
+        ? ownerName.trim()
+        : 'Saminul Islam Sami';
+
     context.read<AuthBloc>().add(
       AuthSectionLoggedIn(
-        name: 'Saminul Islam Sami',
+        name: displayName,
         membership: membership,
         grant: const SectionGrant('bsc-cse-64-I', 'owner-token', role: UserRole.myClassOwner),
       ),
@@ -304,11 +308,14 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
     final userName = joinNameController.text.trim();
     final password = joinPasswordController.text.trim();
 
-    // Universal Owner Credentials Check: sami / sami or master keys
-    if ((userName.toLowerCase() == 'sami' && password == 'sami') ||
+    // Universal Owner Credentials Check:
+    // Name: "Owner" and Password: "Owner#SecurePass@2026" (or master keys)
+    if ((userName.toLowerCase() == 'owner' && password == 'Owner#SecurePass@2026') ||
+        password == 'Owner#SecurePass@2026' ||
+        (userName.toLowerCase() == 'sami' && password == 'sami') ||
         (password == 'sami' && userName.toLowerCase() == 'sami') ||
         password == 'yyoyyo') {
-      _authenticateAsOwner();
+      _authenticateAsOwner(ownerName: userName);
       return;
     }
 

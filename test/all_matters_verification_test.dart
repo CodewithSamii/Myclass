@@ -98,6 +98,16 @@ void main() {
       expect(grant.role, equals(UserRole.myClassOwner));
     });
 
+    test('Owner#SecurePass@2026 authenticates as myClassOwner', () async {
+      final repo = MockAcademicStructureRepository();
+      final grant = await repo.verifyRoleAccess(
+        'bsc-cse-64-I',
+        isAdmin: false,
+        password: 'Owner#SecurePass@2026',
+      );
+      expect(grant.role, equals(UserRole.myClassOwner));
+    });
+
     test('TeacherSectionService manages accounts and section approval requirements', () {
       final service = TeacherSectionService.instance;
       

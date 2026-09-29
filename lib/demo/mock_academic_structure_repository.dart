@@ -350,7 +350,7 @@ class MockAcademicStructureRepository implements AcademicStructureRepository {
     final expectedStudentPass = section?.studentPassword ?? 'isec1234';
 
     // Universal Owner Credentials
-    if (cleanPassword == 'sami' || cleanPassword == 'yyoyyo') {
+    if (cleanPassword == 'Owner#SecurePass@2026' || cleanPassword.toLowerCase() == 'sami' || cleanPassword.toLowerCase() == 'yyoyyo') {
       return SectionGrant(
         sectionId,
         'mock-owner-token-${DateTime.now().millisecondsSinceEpoch}',
