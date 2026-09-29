@@ -8,6 +8,7 @@ import '../../../core/models.dart';
 import '../../../design_system/tokens.dart';
 import '../../../core/clock_cubit.dart';
 import '../../../shared/widgets/primitives.dart';
+import '../../../shared/widgets/chocolate_block_date_bar.dart';
 import '../../events/bloc/events_bloc.dart';
 import '../../events/views/event_detail_page.dart';
 import '../../events/views/upcoming_events_page.dart';
@@ -23,6 +24,8 @@ import '../../section_admin/views/event_editor_page.dart';
 import '../../section_admin/views/set_slots_page.dart';
 import '../../section_admin/views/set_routine_page.dart';
 import '../../schedule/views/temporary_class_sheet.dart';
+import '../../schedule/views/admin_options_sheet.dart';
+import '../../teacher/services/teacher_section_service.dart';
 import '../models/agenda_projection.dart';
 
 class HomePage extends StatelessWidget {
@@ -60,26 +63,28 @@ class HomePage extends StatelessWidget {
           ],
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.fromLTRB(24, 6, 24, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Surface(
                 color: c.sageBg,
                 border: false,
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Icon(CupertinoIcons.person_2_fill, color: c.sage, size: 24),
-                        const SizedBox(width: 10),
-                        Text(
-                          'Join or Create Classroom',
-                          style: context.type.titleMedium?.copyWith(
-                            color: c.sage,
-                            fontWeight: FontWeight.bold,
+                        Icon(CupertinoIcons.person_2_fill, color: c.sage, size: 22),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Join or Create Classroom',
+                            style: context.type.titleMedium?.copyWith(
+                              color: c.sage,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ],
@@ -89,15 +94,15 @@ class HomePage extends StatelessWidget {
                       'Select your department, batch, and section to access your personalized classroom schedule, or request a new section as an Admin.',
                       style: context.type.bodyMedium?.copyWith(
                         color: c.ink,
-                        height: 1.4,
+                        height: 1.35,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 17),
                     FilledButton(
                       onPressed: onSchedule,
                       style: FilledButton.styleFrom(
                         backgroundColor: c.sage,
-                        minimumSize: const Size.fromHeight(46),
+                        minimumSize: const Size.fromHeight(44),
                       ),
                       child: const Text('Enter Classroom / Join', style: TextStyle(fontWeight: FontWeight.w600)),
                     ),
@@ -110,21 +115,21 @@ class HomePage extends StatelessWidget {
                 'Explore MyClass',
                 style: context.type.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
 
               Surface(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: c.subtle,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Icon(CupertinoIcons.calendar, color: c.ink, size: 22),
+                      child: Icon(CupertinoIcons.calendar, color: c.ink, size: 20),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -133,7 +138,7 @@ class HomePage extends StatelessWidget {
                             'Class Schedules & Routine',
                             style: context.type.titleSmall?.copyWith(fontWeight: FontWeight.bold),
                           ),
-                          const SizedBox(height: 3),
+                          const SizedBox(height: 2),
                           Text(
                             'Universal time periods and 7-day routine matrices customized for each university batch.',
                             style: context.type.bodySmall?.copyWith(color: c.secondary),
@@ -144,21 +149,21 @@ class HomePage extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
 
               Surface(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: c.subtle,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Icon(CupertinoIcons.checkmark_circle, color: c.ink, size: 22),
+                      child: Icon(CupertinoIcons.checkmark_circle, color: c.ink, size: 20),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -167,7 +172,7 @@ class HomePage extends StatelessWidget {
                             'Assignments & Tasks',
                             style: context.type.titleSmall?.copyWith(fontWeight: FontWeight.bold),
                           ),
-                          const SizedBox(height: 3),
+                          const SizedBox(height: 2),
                           Text(
                             'Track academic deadlines, submissions, and reminders with personal completion status.',
                             style: context.type.bodySmall?.copyWith(color: c.secondary),
@@ -178,21 +183,21 @@ class HomePage extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
 
               Surface(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: c.subtle,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Icon(CupertinoIcons.bus, color: c.ink, size: 22),
+                      child: Icon(CupertinoIcons.bus, color: c.ink, size: 20),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -201,7 +206,7 @@ class HomePage extends StatelessWidget {
                             'Campus Services & Faculty',
                             style: context.type.titleSmall?.copyWith(fontWeight: FontWeight.bold),
                           ),
-                          const SizedBox(height: 3),
+                          const SizedBox(height: 2),
                           Text(
                             'Browse university bus routes, timetables, and find faculty contacts effortlessly.',
                             style: context.type.bodySmall?.copyWith(color: c.secondary),
@@ -212,7 +217,7 @@ class HomePage extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 20),
               Center(
                 child: Text(
                   'MyClass v1.0.0 · © 2026 Saminul Islam Sami · All Rights Reserved',
@@ -223,7 +228,7 @@ class HomePage extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
             ],
           ),
         ),
@@ -269,7 +274,6 @@ class HomePage extends StatelessWidget {
       periods: ss.periods,
       omitRoutine: unknown,
     );
-    final conflicts = AgendaProjection.conflicts(selectedEntries);
 
     final notes = context
         .watch<NotesBloc>()
@@ -360,7 +364,13 @@ class HomePage extends StatelessWidget {
               onTap: () => openPage(context, const UpcomingEventsPage()),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 4),
+
+            // Teacher General Controls (at top of teacher section management area)
+            if (profile.membership.isTeacher) ...[
+              _TeacherGeneralControlsBar(selectedDate: ss.selected),
+              const SizedBox(height: 4),
+            ],
 
             // 3. Existing Schedule / Routine Section
             _ChocolateBlockDateBar(
@@ -377,80 +387,71 @@ class HomePage extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  sameDay(ss.selected, ss.now) ? 'Today' : Fmt.fullDate(ss.selected),
+                  sameDay(ss.selected, now) ? 'Today' : Fmt.fullDate(ss.selected),
                   style: context.type.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 TextButton(
                   onPressed: () => context
                       .read<ScheduleBloc>()
-                      .add(ScheduleDateSelected(dateOnly(ss.now))),
+                      .add(ScheduleDateSelected(dateOnly(now))),
                   child: const Text('Jump to Today'),
                 ),
               ],
             ),
             if (profile.membership.canManage || profile.membership.isOwner) ...[
               const SizedBox(height: 2),
-              Row(
-                children: [
-                  TextButton.icon(
-                    onPressed: () => openSheet(
-                      context,
-                      TemporaryClassSheet(initialDate: ss.selected),
-                    ),
-                    icon: const Icon(CupertinoIcons.calendar_badge_plus, size: 14),
-                    label: const Text('+ Temp Class'),
-                    style: TextButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(horizontal: 6),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  TextButton.icon(
-                    onPressed: () {
-                      final daySessions = ss.sessions.where((s) => s.weekday == ss.selected.weekday).toList();
-                      if (daySessions.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('No routine classes scheduled for ${Fmt.weekday(ss.selected)}. Events can only be assigned to existing routine classes.'),
-                            backgroundColor: context.colors.amber,
-                          ),
-                        );
-                      } else {
-                        openPage(
-                          context,
-                          EventEditorPage(initialDate: ss.selected),
-                        );
-                      }
-                    },
-                    icon: const Icon(CupertinoIcons.plus_circle, size: 14),
-                    label: const Text('Add Event'),
-                    style: TextButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(horizontal: 6),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-
-            if (conflicts.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Surface(
-                color: context.colors.amberBg,
-                border: false,
-                padding: const EdgeInsets.all(10),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    Icon(
-                      CupertinoIcons.exclamationmark_triangle,
-                      size: 16,
-                      color: context.colors.amber,
+                    TextButton.icon(
+                      onPressed: () => openSheet(
+                        context,
+                        TemporaryClassSheet(initialDate: ss.selected),
+                      ),
+                      icon: const Icon(CupertinoIcons.calendar_badge_plus, size: 14),
+                      label: const Text('+ Temp Class'),
+                      style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                      ),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        '${conflicts.length} items overlap. Check latest updates.',
-                        style: context.type.bodySmall?.copyWith(color: context.colors.amber),
+                    const SizedBox(width: 4),
+                    TextButton.icon(
+                      onPressed: () {
+                        final daySessions = ss.sessions.where((s) => s.weekday == ss.selected.weekday).toList();
+                        if (daySessions.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('No routine classes scheduled for ${Fmt.weekday(ss.selected)}. Events can only be assigned to existing routine classes.'),
+                              backgroundColor: context.colors.amber,
+                            ),
+                          );
+                        } else {
+                          openPage(
+                            context,
+                            EventEditorPage(initialDate: ss.selected),
+                          );
+                        }
+                      },
+                      icon: const Icon(CupertinoIcons.plus_circle, size: 14),
+                      label: const Text('Add Event'),
+                      style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    TextButton.icon(
+                      onPressed: () => openSheet(
+                        context,
+                        AdminOptionsSheet(selectedDate: ss.selected),
+                      ),
+                      icon: const Icon(CupertinoIcons.slider_horizontal_3, size: 14),
+                      label: const Text('Admin Options'),
+                      style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
                       ),
                     ),
                   ],
@@ -474,13 +475,13 @@ class HomePage extends StatelessWidget {
               now: ss.now,
               canManage: profile.membership.canManage || profile.membership.isOwner,
               onTapEntry: (entry) {
-                if (entry.event != null) {
-                  openPage(context, EventDetailPage(id: entry.event!.id));
-                } else if (entry.session != null) {
+                if (entry.session != null) {
                   openPage(
                     context,
                     ClassDetailPage(sessionId: entry.session!.id, day: entry.day),
                   );
+                } else if (entry.event != null) {
+                  openPage(context, EventDetailPage(id: entry.event!.id));
                 }
               },
             ),
@@ -528,15 +529,20 @@ class HomePage extends StatelessWidget {
       ),
     ];
 
-    return RefreshIndicator(
-      onRefresh: () async {
-        context.read<EventsBloc>().add(EventsRefresh());
-      },
-      color: context.colors.ink,
-      child: ListView(
-        key: const PageStorageKey('home'),
-        padding: EdgeInsets.zero,
-        children: content,
+    return _DateSwipeWrapper(
+      selectedDate: ss.selected,
+      onDateChanged: (d) =>
+          context.read<ScheduleBloc>().add(ScheduleDateSelected(d)),
+      child: RefreshIndicator(
+        onRefresh: () async {
+          context.read<EventsBloc>().add(EventsRefresh());
+        },
+        color: context.colors.ink,
+        child: ListView(
+          key: const PageStorageKey('home'),
+          padding: EdgeInsets.zero,
+          children: content,
+        ),
       ),
     );
   }
@@ -556,12 +562,111 @@ class HomePage extends StatelessWidget {
 
 void openAgenda(BuildContext context, AgendaEntry entry) => openPage(
   context,
-  entry.events.isNotEmpty
-      ? EventDetailPage(id: entry.events.first.id)
-      : (entry.event != null
-          ? EventDetailPage(id: entry.event!.id)
-          : ClassDetailPage(sessionId: entry.session!.id, day: entry.day)),
+  entry.session != null
+      ? ClassDetailPage(sessionId: entry.session!.id, day: entry.day)
+      : (entry.events.isNotEmpty
+          ? EventDetailPage(id: entry.events.first.id)
+          : EventDetailPage(id: entry.event!.id)),
 );
+
+/// Horizontal swipe gesture detector allowing date-to-date navigation anywhere on the page
+class _DateSwipeWrapper extends StatefulWidget {
+  const _DateSwipeWrapper({
+    required this.selectedDate,
+    required this.onDateChanged,
+    required this.child,
+  });
+
+  final DateTime selectedDate;
+  final ValueChanged<DateTime> onDateChanged;
+  final Widget child;
+
+  @override
+  State<_DateSwipeWrapper> createState() => _DateSwipeWrapperState();
+}
+
+class _DateSwipeWrapperState extends State<_DateSwipeWrapper> {
+  double _dragDistance = 0.0;
+  bool _swiped = false;
+
+  void _onHorizontalDragStart(DragStartDetails details) {
+    _dragDistance = 0.0;
+    _swiped = false;
+  }
+
+  void _onHorizontalDragUpdate(DragUpdateDetails details) {
+    if (_swiped) return;
+    _dragDistance += details.primaryDelta ?? 0.0;
+    const threshold = 48.0;
+    if (_dragDistance <= -threshold) {
+      _swiped = true;
+      HapticFeedback.selectionClick();
+      widget.onDateChanged(
+        dateOnly(DateTime(
+          widget.selectedDate.year,
+          widget.selectedDate.month,
+          widget.selectedDate.day + 1,
+        )),
+      );
+    } else if (_dragDistance >= threshold) {
+      _swiped = true;
+      HapticFeedback.selectionClick();
+      widget.onDateChanged(
+        dateOnly(DateTime(
+          widget.selectedDate.year,
+          widget.selectedDate.month,
+          widget.selectedDate.day - 1,
+        )),
+      );
+    }
+  }
+
+  void _onHorizontalDragEnd(DragEndDetails details) {
+    if (!_swiped) {
+      final velocity = details.primaryVelocity ?? 0.0;
+      if (velocity <= -200 || _dragDistance <= -24) {
+        _swiped = true;
+        HapticFeedback.selectionClick();
+        widget.onDateChanged(
+          dateOnly(DateTime(
+            widget.selectedDate.year,
+            widget.selectedDate.month,
+            widget.selectedDate.day + 1,
+          )),
+        );
+      } else if (velocity >= 200 || _dragDistance >= 24) {
+        _swiped = true;
+        HapticFeedback.selectionClick();
+        widget.onDateChanged(
+          dateOnly(DateTime(
+            widget.selectedDate.year,
+            widget.selectedDate.month,
+            widget.selectedDate.day - 1,
+          )),
+        );
+      }
+    }
+    _dragDistance = 0.0;
+    _swiped = false;
+  }
+
+  void _onHorizontalDragCancel() {
+    _dragDistance = 0.0;
+    _swiped = false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onHorizontalDragStart: _onHorizontalDragStart,
+      onHorizontalDragUpdate: _onHorizontalDragUpdate,
+      onHorizontalDragEnd: _onHorizontalDragEnd,
+      onHorizontalDragCancel: _onHorizontalDragCancel,
+      child: widget.child,
+    );
+  }
+}
 
 /// Compact Focus Card ("Happening Now")
 class _FocusCard extends StatelessWidget {
@@ -787,118 +892,7 @@ class _UpcomingEventsPreview extends StatelessWidget {
   }
 }
 
-/// 2-Row "Chocolate Block" Date Bar
-class _ChocolateBlockDateBar extends StatelessWidget {
-  const _ChocolateBlockDateBar({
-    required this.selected,
-    required this.now,
-    required this.onDateSelected,
-  });
-
-  final DateTime selected;
-  final DateTime now;
-  final ValueChanged<DateTime> onDateSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    // 60-day horizontal date timeline covering ~2 full months
-    final startDay = dateOnly(now).subtract(const Duration(days: 14));
-    final days = List.generate(60, (i) => startDay.add(Duration(days: i)));
-
-    return SizedBox(
-      height: 74,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        itemCount: days.length,
-        itemBuilder: (ctx, i) {
-          final day = days[i];
-          final isSelected = sameDay(day, selected);
-          final isToday = sameDay(day, now);
-
-          const chocolateDark = Color(0xFF3E2723);
-          const chocolateMedium = Color(0xFF4E342E);
-          const chocolateCream = Color(0xFFFFF8E7);
-          const chocolateSubtle = Color(0xFFEFEBE9);
-
-          final isDark = Theme.of(context).brightness == Brightness.dark;
-
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: InkWell(
-              onTap: () {
-                HapticFeedback.selectionClick();
-                onDateSelected(day);
-              },
-              borderRadius: BorderRadius.circular(12),
-              child: AnimatedContainer(
-                duration: Motion.fast,
-                width: 76,
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
-                decoration: BoxDecoration(
-                  gradient: isSelected
-                      ? const LinearGradient(
-                          colors: [chocolateMedium, chocolateDark],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        )
-                      : null,
-                  color: isSelected
-                      ? null
-                      : (isDark ? const Color(0xFF231D1B) : chocolateSubtle),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isSelected
-                        ? const Color(0xFF8D6E63)
-                        : (isToday ? const Color(0xFF5D4037) : Colors.transparent),
-                    width: isSelected ? 1.5 : (isToday ? 1.2 : 0),
-                  ),
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.22),
-                            blurRadius: 6,
-                            offset: const Offset(0, 3),
-                          ),
-                        ]
-                      : null,
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      '${day.day} ${Fmt.month(day).substring(0, 3)}',
-                      maxLines: 1,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: isSelected
-                            ? chocolateCream
-                            : (isDark ? Colors.white : const Color(0xFF2E1C14)),
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      Fmt.weekday(day),
-                      maxLines: 1,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                        color: isSelected
-                            ? chocolateCream.withOpacity(0.85)
-                            : (isDark ? Colors.grey[400] : const Color(0xFF6D4C41)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
+typedef _ChocolateBlockDateBar = ChocolateBlockDateBar;
 
 /// 2-Column Schedule Table Layout
 class _TwoColumnScheduleTable extends StatelessWidget {
@@ -1120,7 +1114,8 @@ class _ScheduleTableRow extends StatelessWidget {
         ? entry.events
         : (entry.event != null ? [entry.event!] : <AcademicEvent>[]);
 
-    final displayName = (entry.course.name.isNotEmpty && entry.course.name != 'Course details pending')
+    final isShifted = entry.isShifted;
+    final baseName = (entry.course.name.isNotEmpty && entry.course.name != 'Course details pending')
         ? entry.course.name
         : (entry.event?.title ?? entry.course.name);
 
@@ -1170,13 +1165,30 @@ class _ScheduleTableRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    displayName,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: isCancelled ? c.faint : c.ink,
-                      decoration: isCancelled ? TextDecoration.lineThrough : null,
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: baseName,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: isCancelled ? c.faint : c.ink,
+                            decoration: isCancelled ? TextDecoration.lineThrough : null,
+                          ),
+                        ),
+                        if (isShifted) ...[
+                          const TextSpan(text: ' — '),
+                          TextSpan(
+                            text: 'Shifted',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: c.sage,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -1269,32 +1281,41 @@ class _ScheduleTableRow extends StatelessWidget {
                     for (final ev in attachedEvents) ...[
                       Padding(
                         padding: const EdgeInsets.only(top: 3),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Container(
-                              width: 6,
-                              height: 6,
-                              margin: const EdgeInsets.only(right: 6),
-                              decoration: const BoxDecoration(
-                                color: Color(0xFFC62828),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            Expanded(
-                              child: Text(
-                                '${ev.type.label}: ${ev.title}',
-                                style: const TextStyle(
-                                  color: Color(0xFFC62828),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
-                                  decoration: TextDecoration.underline,
-                                  decorationColor: Color(0xFFC62828),
-                                  decorationThickness: 1.5,
+                        child: InkWell(
+                          onTap: () {
+                            openPage(context, EventDetailPage(id: ev.id));
+                          },
+                          borderRadius: BorderRadius.circular(4),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Container(
+                                  width: 6,
+                                  height: 6,
+                                  margin: const EdgeInsets.only(right: 6),
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFFC62828),
+                                    shape: BoxShape.circle,
+                                  ),
                                 ),
-                              ),
+                                Expanded(
+                                  child: Text(
+                                    '${ev.type.label}: ${ev.title}',
+                                    style: const TextStyle(
+                                      color: Color(0xFFC62828),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                      decoration: TextDecoration.underline,
+                                      decorationColor: Color(0xFFC62828),
+                                      decorationThickness: 1.5,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       ),
                     ],
@@ -1307,5 +1328,273 @@ class _ScheduleTableRow extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _TeacherGeneralControlsBar extends StatelessWidget {
+  const _TeacherGeneralControlsBar({required this.selectedDate});
+  final DateTime selectedDate;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final approvedSections = TeacherSectionService.instance.approvedSections;
+    final sectionNames = approvedSections.isNotEmpty
+        ? approvedSections.map((s) => s.sectionName).join(', ')
+        : 'Assigned Sections';
+
+    return Surface(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      color: c.subtle,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(CupertinoIcons.slider_horizontal_below_rectangle, size: 16, color: c.sage),
+              const SizedBox(width: 8),
+              Text(
+                'General Controls',
+                style: context.type.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: -0.2,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: c.sage.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '${approvedSections.length} Sections',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: c.sage,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Applies across: $sectionNames',
+            style: context.type.bodySmall?.copyWith(
+              color: c.secondary,
+              fontSize: 12,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _openAnnouncementDialog(context, approvedSections),
+                  icon: const Icon(CupertinoIcons.speaker_2_fill, size: 15),
+                  label: const Text('General Announcement', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _confirmCancelAllClasses(context, selectedDate, approvedSections),
+                  icon: Icon(CupertinoIcons.clear_circled_solid, size: 15, color: c.red),
+                  label: Text('Cancel All Classes', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: c.red)),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                    visualDensity: VisualDensity.compact,
+                    side: BorderSide(color: c.red.withValues(alpha: 0.4)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openAnnouncementDialog(BuildContext context, List<TeacherSectionItem> approvedSections) {
+    final titleController = TextEditingController();
+    final messageController = TextEditingController();
+    final sectionNames = approvedSections.isNotEmpty
+        ? approvedSections.map((s) => s.sectionName).join(', ')
+        : 'All Approved Sections';
+
+    showCupertinoDialog(
+      context: context,
+      useRootNavigator: true,
+      builder: (dialogCtx) {
+        return CupertinoAlertDialog(
+          title: const Text('General Announcement'),
+          content: Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Notify students across: $sectionNames',
+                  style: const TextStyle(fontSize: 12, color: CupertinoColors.secondaryLabel),
+                ),
+                const SizedBox(height: 12),
+                CupertinoTextField(
+                  controller: titleController,
+                  placeholder: 'Announcement Title (e.g. Midterm Guideline)',
+                  style: const TextStyle(fontSize: 14),
+                ),
+                const SizedBox(height: 8),
+                CupertinoTextField(
+                  controller: messageController,
+                  placeholder: 'Message / Details',
+                  maxLines: 3,
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(dialogCtx).pop(),
+            ),
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              child: const Text('Send'),
+              onPressed: () {
+                final title = titleController.text.trim();
+                final body = messageController.text.trim();
+                if (title.isEmpty && body.isEmpty) return;
+                Navigator.of(dialogCtx).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Announcement sent to students in $sectionNames.',
+                    ),
+                    backgroundColor: context.colors.sage,
+                  ),
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _confirmCancelAllClasses(
+    BuildContext context,
+    DateTime selectedDate,
+    List<TeacherSectionItem> approvedSections,
+  ) async {
+    final sectionNames = approvedSections.isNotEmpty
+        ? approvedSections.map((s) => s.sectionName).join(', ')
+        : 'All Approved Sections';
+
+    bool notifyStudents = true;
+
+    final confirmed = await showCupertinoDialog<bool>(
+      context: context,
+      useRootNavigator: true,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return CupertinoAlertDialog(
+              title: const Text('Cancel All Classes'),
+              content: Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Are you sure you want to cancel all classes on ${Fmt.shortDate(selectedDate)} across all your approved sections?\n\n'
+                      'Sections: $sectionNames',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: CupertinoColors.systemGrey6.resolveFrom(ctx),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'Notify students?',
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                          Text(
+                            notifyStudents ? 'Yes' : 'No',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: notifyStudents
+                                  ? CupertinoColors.activeGreen
+                                  : CupertinoColors.secondaryLabel,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          CupertinoSwitch(
+                            value: notifyStudents,
+                            onChanged: (val) {
+                              setDialogState(() => notifyStudents = val);
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                CupertinoDialogAction(
+                  child: const Text('Cancel / No'),
+                  onPressed: () => Navigator.of(dialogCtx).pop(false),
+                ),
+                CupertinoDialogAction(
+                  isDestructiveAction: true,
+                  child: const Text('Confirm / Yes'),
+                  onPressed: () => Navigator.of(dialogCtx).pop(true),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (confirmed == true && context.mounted) {
+      final ss = context.read<ScheduleBloc>().state;
+      final daySessions = ss.sessions.where((s) => s.weekday == selectedDate.weekday).toList();
+      for (final session in daySessions) {
+        context.read<ScheduleBloc>().add(
+          CancelSessionOnDateRequested(
+            session: session,
+            date: selectedDate,
+            cancel: true,
+          ),
+        );
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'All classes on ${Fmt.shortDate(selectedDate)} marked cancelled across $sectionNames'
+            '${notifyStudents ? " · Students notified" : ""}.',
+          ),
+          backgroundColor: context.colors.red,
+        ),
+      );
+    }
   }
 }

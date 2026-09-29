@@ -8,7 +8,10 @@ import '../features/auth/views/auth_page.dart';
 import '../features/auth/views/section_entry_sheet.dart';
 import '../features/home/views/home_page.dart';
 import '../features/campus/views/campus_page.dart';
+import '../features/resources/views/resources_page.dart';
 import '../features/profile/views/profile_page.dart';
+import '../features/teacher/services/teacher_section_service.dart';
+import 'widgets/about_sheet.dart';
 import '../features/tasks/bloc/tasks_bloc.dart';
 import '../features/profile/bloc/profile_bloc.dart';
 import '../features/events/bloc/events_bloc.dart';
@@ -52,13 +55,14 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
     final isOwner = membership.isOwner;
 
     final labels = isLoggedIn
-        ? ['Home', 'Campus', 'Profile']
+        ? ['Home', 'Campus', 'Resources', 'Profile']
         : ['Home', 'Profile'];
 
     final icons = isLoggedIn
         ? [
             CupertinoIcons.house,
             CupertinoIcons.square_grid_2x2,
+            CupertinoIcons.folder,
             CupertinoIcons.person_crop_circle,
           ]
         : [
@@ -72,6 +76,7 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
               onSchedule: () => select(0),
             ),
             const CampusPage(),
+            const ResourcesPage(),
             const ProfilePage(),
           ]
         : [
@@ -272,6 +277,60 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
                                 ],
                               ),
                             ),
+                          if (membership.isTeacher)
+                            Container(
+                              margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: c.sage.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: c.sage.withValues(alpha: 0.3)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(CupertinoIcons.person_badge_plus_fill, color: c.sage, size: 16),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Teacher: ${membership.sectionName} (${membership.batchName})',
+                                      style: context.type.bodySmall?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                        color: c.ink,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  InkWell(
+                                    onTap: () => _showTeacherSectionSwitcher(context),
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: c.sage,
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(CupertinoIcons.arrow_2_squarepath, size: 12, color: Colors.white),
+                                          SizedBox(width: 4),
+                                          Text(
+                                            'My Sections',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           Expanded(
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -302,7 +361,7 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
                   child: SafeArea(
                     top: false,
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(6, 7, 6, 6),
+                      padding: const EdgeInsets.fromLTRB(6, 5, 6, 5),
                       child: Row(
                         children: [
                           for (var i = 0; i < labels.length; i++)
@@ -388,17 +447,21 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
                                 child: Text(
                                   isOwner
                                       ? 'OWNER'
-                                      : isAdmin
-                                          ? 'ADMIN'
-                                          : 'STUDENT',
+                                      : membership.isTeacher
+                                          ? 'TEACHER'
+                                          : isAdmin
+                                              ? 'ADMIN'
+                                              : 'STUDENT',
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
                                     color: isOwner
                                         ? c.amber
-                                        : isAdmin
+                                        : membership.isTeacher
                                             ? c.sage
-                                            : c.ink,
+                                            : isAdmin
+                                                ? c.sage
+                                                : c.ink,
                                   ),
                                 ),
                               ),
@@ -434,6 +497,43 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
                       onTap: () {
                         Navigator.of(context).pop();
                         select(0);
+                      },
+                    ),
+                  ],
+
+                  if (membership.isTeacher) ...[
+                    const SizedBox(height: 12),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 16, bottom: 6),
+                      child: Text(
+                        'TEACHER CONTROLS',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                          color: c.sage,
+                        ),
+                      ),
+                    ),
+                    ListTile(
+                      leading: Icon(CupertinoIcons.rectangle_stack_person_crop, color: c.sage, size: 20),
+                      title: const Text('My Sections'),
+                      subtitle: Text(
+                        '${TeacherSectionService.instance.approvedSections.length} approved sections',
+                        style: TextStyle(color: c.secondary, fontSize: 12),
+                      ),
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        _showTeacherSectionSwitcher(context);
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(CupertinoIcons.slider_horizontal_3, size: 20),
+                      title: const Text('Set Routine'),
+                      subtitle: const Text('Map Saturday–Friday routine'),
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        openPage(context, const SetRoutinePage());
                       },
                     ),
                   ],
@@ -505,6 +605,14 @@ class _WorkspaceShellState extends State<WorkspaceShell> {
                       },
                     ),
                   ],
+                  ListTile(
+                    leading: const Icon(CupertinoIcons.info_circle, size: 20),
+                    title: const Text('About MyClass'),
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      showAboutMyClassSheet(context);
+                    },
+                  ),
                 ],
               ),
             ),
@@ -577,7 +685,7 @@ class _NavItem extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         child: Padding(
           padding: EdgeInsets.symmetric(
-            vertical: vertical ? 16 : 8,
+            vertical: vertical ? 16 : 5,
             horizontal: 2,
           ),
           child: Column(
@@ -585,7 +693,7 @@ class _NavItem extends StatelessWidget {
             children: [
               AnimatedContainer(
                 duration: Motion.fast,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
                 decoration: BoxDecoration(
                   color: selected ? c.subtle : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
@@ -596,7 +704,7 @@ class _NavItem extends StatelessWidget {
                   color: selected ? c.ink : c.faint,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 3),
               Text(
                 label,
                 maxLines: 1,
@@ -685,6 +793,213 @@ void _showOwnerSectionSwitcher(BuildContext context) {
     useSafeArea: true,
     builder: (_) => const OwnerSectionSwitcherSheet(),
   );
+}
+
+void _showTeacherSectionSwitcher(BuildContext context) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    builder: (_) => const _TeacherSectionSwitcherSheet(),
+  );
+}
+
+class _TeacherSectionSwitcherSheet extends StatefulWidget {
+  const _TeacherSectionSwitcherSheet();
+
+  @override
+  State<_TeacherSectionSwitcherSheet> createState() => _TeacherSectionSwitcherSheetState();
+}
+
+class _TeacherSectionSwitcherSheetState extends State<_TeacherSectionSwitcherSheet> {
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final currentMem = context.watch<ProfileBloc>().state.profile.membership;
+    final service = TeacherSectionService.instance;
+    final approved = service.approvedSections;
+    final pending = service.pendingSections;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        24,
+        8,
+        24,
+        MediaQuery.viewInsetsOf(context).bottom + 28,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(CupertinoIcons.rectangle_stack_person_crop, color: c.sage, size: 22),
+                const SizedBox(width: 8),
+                Text('Teacher Mode · My Sections', style: context.type.headlineSmall),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(CupertinoIcons.xmark, size: 18),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Select an approved section to switch management view:',
+              style: context.type.bodySmall?.copyWith(color: c.secondary),
+            ),
+            const SizedBox(height: 16),
+            if (approved.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Text(
+                  'No approved sections yet. Submit a section request below.',
+                  style: TextStyle(color: c.secondary, fontSize: 13),
+                ),
+              )
+            else
+              for (final sec in approved) ...[
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: () {
+                      final newMem = service.createMembershipForSection(sec);
+                      context.read<AuthBloc>().add(
+                        AuthSectionLoggedIn(
+                          name: service.currentTeacher?.name ?? 'Teacher',
+                          membership: newMem,
+                          grant: SectionGrant(sec.sectionId, 'teacher-token', role: UserRole.teacher),
+                        ),
+                      );
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Switched to ${sec.batchName} · ${sec.sectionName}'),
+                          backgroundColor: c.sage,
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: sec.sectionId == currentMem.sectionId ? c.sageBg : c.surface,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: sec.sectionId == currentMem.sectionId ? c.sage : c.line,
+                          width: sec.sectionId == currentMem.sectionId ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            sec.sectionId == currentMem.sectionId
+                                ? CupertinoIcons.checkmark_circle_fill
+                                : CupertinoIcons.circle,
+                            color: sec.sectionId == currentMem.sectionId ? c.sage : c.faint,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  sec.sectionName,
+                                  style: context.type.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${sec.departmentName} · ${sec.batchName} · ${sec.universityName}',
+                                  style: context.type.bodySmall?.copyWith(color: c.secondary, fontSize: 11),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (sec.sectionId == currentMem.sectionId)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: c.sage,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'ACTIVE',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            if (pending.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                'PENDING APPROVAL',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: c.secondary,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: 8),
+              for (final p in pending)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: c.subtle,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: c.line),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(CupertinoIcons.hourglass, size: 14, color: c.amber),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '${p.sectionName} (${p.batchName}) · Awaiting Admin/Owner approval',
+                            style: TextStyle(fontSize: 12, color: c.secondary),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: () {
+                Navigator.of(context).pop();
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  useSafeArea: true,
+                  builder: (_) => const SectionEntrySheet(initialTab: 1),
+                );
+              },
+              icon: const Icon(CupertinoIcons.plus, size: 16),
+              label: const Text('+ Add Section', style: TextStyle(fontWeight: FontWeight.bold)),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(46),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class OwnerSectionSwitcherSheet extends StatefulWidget {

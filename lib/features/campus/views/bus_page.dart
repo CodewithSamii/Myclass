@@ -11,6 +11,7 @@ import '../../home/models/agenda_projection.dart';
 import '../../profile/bloc/profile_bloc.dart';
 import '../../schedule/bloc/schedule_bloc.dart';
 import '../bloc/campus_bloc.dart';
+import 'custom_bus_days_sheet.dart';
 
 class BusPage extends StatefulWidget {
   const BusPage({super.key});
@@ -50,6 +51,27 @@ class _BusPageState extends State<BusPage> {
         : null;
 
     final busReminderMin = profile.reminders.busReminderMinutes;
+    final busMode = profile.reminders.busReminderMode;
+    final busDays = profile.reminders.busReminderDays;
+    final isTodayActive = profile.reminders.isBusReminderActiveForDay(
+      date: now,
+      hasClasses: hasClassesToday,
+    );
+
+    String reminderStatusText;
+    if (busReminderMin == 0) {
+      reminderStatusText = 'Bus reminders are currently turned off.';
+    } else if (busMode == 'classDaysOnly') {
+      reminderStatusText = hasClassesToday
+          ? 'Active for today’s classes (${Fmt.minute(firstClassStart!)} – ${Fmt.minute(lastClassEnd!)}).'
+          : 'No classes scheduled today · Bus reminders are quieted.';
+    } else if (busMode == 'everyDay') {
+      reminderStatusText = 'Active every day according to your bus reminder time.';
+    } else {
+      reminderStatusText = isTodayActive
+          ? 'Active for today according to custom day selection.'
+          : 'Quieted today based on your custom day selection.';
+    }
 
     return DetailPage(
       title: 'University bus',
@@ -76,29 +98,42 @@ class _BusPageState extends State<BusPage> {
                   children: [
                     Icon(CupertinoIcons.bell, size: 16, color: context.colors.ink),
                     const SizedBox(width: 8),
-                    Text(
-                      'Smart Bus Reminder',
-                      style: context.type.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                    Expanded(
+                      child: Text(
+                        'Smart Bus Reminder',
+                        style: context.type.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                    const Spacer(),
-                    if (busReminderMin > 0)
+                    if (busReminderMin > 0) ...[
+                      const SizedBox(width: 8),
                       Badge(
                         '${busReminderMin}m before',
                         color: context.colors.sage,
                         background: context.colors.sageBg,
                       ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  hasClassesToday
-                      ? 'Active for today’s classes (${Fmt.minute(firstClassStart!)} – ${Fmt.minute(lastClassEnd!)}).'
-                      : 'No classes scheduled today · Bus reminders are quieted.',
+                  reminderStatusText,
                   style: context.type.bodySmall?.copyWith(
-                    color: hasClassesToday ? context.colors.secondary : context.colors.amber,
+                    color: (busReminderMin > 0 && isTodayActive)
+                        ? context.colors.secondary
+                        : context.colors.amber,
                   ),
                 ),
                 const SizedBox(height: 12),
+                Text(
+                  'How early to notify me',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: context.colors.secondary,
+                  ),
+                ),
+                const SizedBox(height: 6),
                 Wrap(
                   spacing: 6,
                   runSpacing: 6,
@@ -126,6 +161,92 @@ class _BusPageState extends State<BusPage> {
                       ),
                   ],
                 ),
+                if (busReminderMin > 0) ...[
+                  const SizedBox(height: 14),
+                  Text(
+                    'Which days to notify me',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: context.colors.secondary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // 3 horizontal selection boxes: | Class Days | Every Day | Custom |
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildDayBox(
+                          context,
+                          label: 'Class Days',
+                          isSelected: busMode == 'classDaysOnly',
+                          onTap: () {
+                            context.read<ProfileBloc>().add(
+                              ProfileSaved(
+                                profile.copyWith(
+                                  reminders: profile.reminders.copyWith(busReminderMode: 'classDaysOnly'),
+                                ),
+                              ),
+                            );
+                            feedback(context, 'Notify me only on days when I have classes.');
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildDayBox(
+                          context,
+                          label: 'Every Day',
+                          isSelected: busMode == 'everyDay',
+                          onTap: () {
+                            context.read<ProfileBloc>().add(
+                              ProfileSaved(
+                                profile.copyWith(
+                                  reminders: profile.reminders.copyWith(busReminderMode: 'everyDay'),
+                                ),
+                              ),
+                            );
+                            feedback(context, 'Notify me every day.');
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildDayBox(
+                          context,
+                          label: 'Custom',
+                          isSelected: busMode == 'custom',
+                          onTap: () => _openCustomDaysSheet(context, profile),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (busMode == 'custom') ...[
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Icon(CupertinoIcons.calendar, size: 14, color: context.colors.secondary),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            busDays.isEmpty
+                                ? 'No custom days selected yet. Tap to configure.'
+                                : 'Active on: ${_formatCustomDays(busDays)}',
+                            style: context.type.bodySmall?.copyWith(color: context.colors.secondary),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => _openCustomDaysSheet(context, profile),
+                          style: TextButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                          ),
+                          child: const Text('Change days'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
               ],
             ),
           ),
@@ -150,7 +271,7 @@ class _BusPageState extends State<BusPage> {
                   nowMinute: now.hour * 60 + now.minute,
                   firstClassStart: firstClassStart,
                   lastClassEnd: lastClassEnd,
-                  hasClassesToday: hasClassesToday,
+                  hasClassesToday: isTodayActive,
                 ),
               ),
           const SizedBox(height: 12),
@@ -163,6 +284,90 @@ class _BusPageState extends State<BusPage> {
         ],
       ),
     );
+  }
+
+  Widget _buildDayBox(
+    BuildContext context, {
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    final c = context.colors;
+    return Material(
+      color: isSelected ? c.subtle : c.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(
+          color: isSelected ? c.ink : c.line,
+          width: isSelected ? 1.5 : 1.0,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+              color: isSelected ? c.ink : c.secondary,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openCustomDaysSheet(BuildContext context, UserProfile profile) {
+    openSheet(
+      context,
+      CustomBusDaysSheet(
+        initialDays: profile.reminders.busReminderDays,
+        onSaved: (selectedDays) {
+          context.read<ProfileBloc>().add(
+            ProfileSaved(
+              profile.copyWith(
+                reminders: profile.reminders.copyWith(
+                  busReminderMode: 'custom',
+                  busReminderDays: selectedDays,
+                ),
+              ),
+            ),
+          );
+          feedback(context, 'Custom reminder schedule saved.');
+        },
+      ),
+    );
+  }
+
+  String _formatCustomDays(List<int> days) {
+    const map = {
+      DateTime.saturday: 'Sat',
+      DateTime.sunday: 'Sun',
+      DateTime.monday: 'Mon',
+      DateTime.tuesday: 'Tue',
+      DateTime.wednesday: 'Wed',
+      DateTime.thursday: 'Thu',
+      DateTime.friday: 'Fri',
+    };
+    final ordered = [
+      DateTime.saturday,
+      DateTime.sunday,
+      DateTime.monday,
+      DateTime.tuesday,
+      DateTime.wednesday,
+      DateTime.thursday,
+      DateTime.friday,
+    ];
+    final active = ordered.where((d) => days.contains(d)).map((d) => map[d]!).toList();
+    if (active.length == 7) return 'Every day (all 7 days)';
+    return active.join(', ');
   }
 }
 

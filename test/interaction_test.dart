@@ -37,7 +37,7 @@ void main() {
       await settle(tester);
       await tester.tap(find.widgetWithText(FilledButton, 'Enter Classroom').last);
       await settle(tester);
-      expect(find.textContaining('Incorrect Student Password'), findsOneWidget);
+      expect(find.textContaining('Incorrect Student Section Code'), findsOneWidget);
 
       // Enter valid student password ('123')
       await tester.enterText(find.byType(TextField).last, '123');

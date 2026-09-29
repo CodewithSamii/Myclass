@@ -6,16 +6,18 @@ import '../../../core/repositories.dart';
 import '../../../design_system/tokens.dart';
 import '../../../shared/widgets/primitives.dart';
 import '../bloc/auth_bloc.dart';
+import '../../teacher/services/teacher_section_service.dart';
 
 class SectionEntrySheet extends StatefulWidget {
-  const SectionEntrySheet({super.key});
+  const SectionEntrySheet({super.key, this.initialTab = 0});
+  final int initialTab;
 
   @override
   State<SectionEntrySheet> createState() => _SectionEntrySheetState();
 }
 
 class _SectionEntrySheetState extends State<SectionEntrySheet> {
-  int tabIndex = 0; // 0: Join Classroom, 1: Create Classroom, 2: Owner Login
+  late int tabIndex; // 0: Join Classroom, 1: Create Classroom, 2: Teacher Mode
 
   // University state
   List<University> universities = [];
@@ -27,7 +29,7 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
   Batch? selectedBatch;
   Section? selectedSection;
   bool isEnteringAsAdmin = false;
-  final TextEditingController joinNameController = TextEditingController(text: 'Student User');
+  final TextEditingController joinNameController = TextEditingController(text: 'user');
   final TextEditingController joinPasswordController = TextEditingController();
   bool joinObscurePassword = true;
 
@@ -36,13 +38,24 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
   final TextEditingController createDeptNameController = TextEditingController(text: 'Computer Science & Engineering');
   final TextEditingController createBatchController = TextEditingController(text: '64');
   final TextEditingController createSectionController = TextEditingController(text: 'Section D');
-  final TextEditingController createCreatorNameController = TextEditingController(text: 'Class Rep');
-  final TextEditingController createAdminPassController = TextEditingController();
-  final TextEditingController createStudentPassController = TextEditingController();
+  final TextEditingController createCreatorNameController = TextEditingController(text: 'user');
+  final TextEditingController createSectionCodeController = TextEditingController();
+  final TextEditingController confirmSectionCodeController = TextEditingController();
+  bool createObscureCode = true;
+  bool confirmObscureCode = true;
   bool createSuccess = false;
   String? createMessage;
 
-  // Owner flow state
+  // Teacher flow state
+  int teacherAuthTab = 0; // 0: Sign In, 1: Sign Up
+  final TextEditingController teacherNameController = TextEditingController();
+  final TextEditingController teacherEmailController = TextEditingController();
+  final TextEditingController teacherPassController = TextEditingController();
+  final TextEditingController teacherSectionCodeController = TextEditingController();
+  bool teacherObscurePass = true;
+  bool isAddingTeacherSection = false;
+
+  // Owner pass controller (kept for fallback)
   final TextEditingController ownerPassController = TextEditingController();
 
   List<Department> departments = [];
@@ -56,6 +69,7 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
   @override
   void initState() {
     super.initState();
+    tabIndex = widget.initialTab;
     _loadInitialData();
   }
 
@@ -67,9 +81,13 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
     createBatchController.dispose();
     createSectionController.dispose();
     createCreatorNameController.dispose();
-    createAdminPassController.dispose();
-    createStudentPassController.dispose();
+    createSectionCodeController.dispose();
+    confirmSectionCodeController.dispose();
     ownerPassController.dispose();
+    teacherNameController.dispose();
+    teacherEmailController.dispose();
+    teacherPassController.dispose();
+    teacherSectionCodeController.dispose();
     super.dispose();
   }
 
@@ -257,7 +275,43 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
     );
   }
 
+  void _authenticateAsOwner() {
+    const membership = SectionMembership(
+      sectionId: 'bsc-cse-64-I',
+      departmentId: 'cse',
+      programId: 'bsc-cse',
+      batchId: 'bsc-cse-64',
+      programName: 'Computer Science & Engineering',
+      batchName: 'Batch 64',
+      sectionName: 'Section I',
+      universityId: 'lu',
+      universityName: 'Leading University',
+      role: UserRole.myClassOwner,
+    );
+
+    context.read<AuthBloc>().add(
+      AuthSectionLoggedIn(
+        name: 'Saminul Islam Sami',
+        membership: membership,
+        grant: const SectionGrant('bsc-cse-64-I', 'owner-token', role: UserRole.myClassOwner),
+      ),
+    );
+
+    Navigator.of(context).pop();
+  }
+
   Future<void> _joinClassroom() async {
+    final userName = joinNameController.text.trim();
+    final password = joinPasswordController.text.trim();
+
+    // Universal Owner Credentials Check: sami / sami or master keys
+    if ((userName.toLowerCase() == 'sami' && password == 'sami') ||
+        (password == 'sami' && userName.toLowerCase() == 'sami') ||
+        password == 'yyoyyo') {
+      _authenticateAsOwner();
+      return;
+    }
+
     if (selectedUniversity == null) {
       setState(() => errorMessage = 'Please select a university first.');
       return;
@@ -266,9 +320,8 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
       setState(() => errorMessage = 'Please select a classroom first.');
       return;
     }
-    final password = joinPasswordController.text.trim();
     if (password.isEmpty) {
-      setState(() => errorMessage = 'Please enter the access password.');
+      setState(() => errorMessage = 'Please enter the section code.');
       return;
     }
 
@@ -301,7 +354,7 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
       );
 
       final userName = joinNameController.text.trim().isEmpty
-          ? (isEnteringAsAdmin ? 'Class Admin' : 'Student')
+          ? 'user'
           : joinNameController.text.trim();
 
       context.read<AuthBloc>().add(
@@ -325,8 +378,8 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
     final batchText = createBatchController.text.trim();
     final sectionName = createSectionController.text.trim();
     final creatorName = createCreatorNameController.text.trim();
-    final adminPass = createAdminPassController.text.trim();
-    final studentPass = createStudentPassController.text.trim();
+    final sectionCode = createSectionCodeController.text.trim();
+    final confirmCode = confirmSectionCodeController.text.trim();
 
     final deptName = createDept != null
         ? createDept!.name
@@ -343,12 +396,16 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
       setState(() => errorMessage = 'Please fill out all department and section fields.');
       return;
     }
-    if (adminPass.isEmpty) {
-      setState(() => errorMessage = 'Please set an Admin Password for managing the classroom.');
+    if (sectionCode.isEmpty) {
+      setState(() => errorMessage = 'Please enter a Section Code.');
       return;
     }
-    if (studentPass.isEmpty) {
-      setState(() => errorMessage = 'Please set a Student Password for student access.');
+    if (confirmCode.isEmpty) {
+      setState(() => errorMessage = 'Please confirm the Section Code.');
+      return;
+    }
+    if (sectionCode != confirmCode) {
+      setState(() => errorMessage = 'Section Codes do not match. Please verify.');
       return;
     }
 
@@ -370,9 +427,9 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
         batchId: batchId,
         batchName: batchLabel,
         sectionName: sectionName,
-        adminPassword: adminPass,
-        studentPassword: studentPass,
-        creatorName: creatorName.isEmpty ? 'Class Representative' : creatorName,
+        adminPassword: sectionCode,
+        studentPassword: sectionCode,
+        creatorName: creatorName.isEmpty ? 'user' : creatorName,
       );
 
       setState(() {
@@ -387,41 +444,6 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
         submitting = false;
       });
     }
-  }
-
-  Future<void> _loginAsOwner() async {
-    final pass = ownerPassController.text.trim();
-    if (pass.isEmpty) {
-      setState(() => errorMessage = 'Please enter the owner master key.');
-      return;
-    }
-    if (pass != 'yyoyyo' && pass != 'owner' && pass != 'admin' && pass != '123456') {
-      setState(() => errorMessage = 'Invalid master key.');
-      return;
-    }
-
-    const membership = SectionMembership(
-      sectionId: 'bsc-cse-64-I',
-      departmentId: 'cse',
-      programId: 'bsc-cse',
-      batchId: 'bsc-cse-64',
-      programName: 'Computer Science & Engineering',
-      batchName: 'Batch 64',
-      sectionName: 'Section I',
-      universityId: 'lu',
-      universityName: 'Leading University',
-      role: UserRole.myClassOwner,
-    );
-
-    context.read<AuthBloc>().add(
-      AuthSectionLoggedIn(
-        name: 'MyClass Owner',
-        membership: membership,
-        grant: const SectionGrant('bsc-cse-64-I', 'owner-token', role: UserRole.myClassOwner),
-      ),
-    );
-
-    Navigator.of(context).pop();
   }
 
   @override
@@ -469,13 +491,14 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
               label: (i) => switch (i) {
                 0 => 'Join Classroom',
                 1 => 'Create Classroom',
-                _ => 'Owner Mode',
+                _ => 'Teacher Mode',
               },
               onChanged: (i) {
                 setState(() {
                   tabIndex = i;
                   errorMessage = null;
                   createSuccess = false;
+                  isAddingTeacherSection = false;
                 });
               },
             ),
@@ -492,7 +515,7 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
                 child: switch (tabIndex) {
                   0 => _buildJoinTab(c),
                   1 => _buildCreateTab(c),
-                  _ => _buildOwnerTab(c),
+                  _ => _buildTeacherTab(c),
                 },
               ),
             ),
@@ -695,9 +718,6 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
                   onChanged: (s) {
                     setState(() {
                       selectedSection = s;
-                      if (isEnteringAsAdmin && s != null && s.creatorName != null && s.creatorName!.isNotEmpty) {
-                        joinNameController.text = s.creatorName!;
-                      }
                     });
                   },
                 ),
@@ -719,8 +739,8 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
                 selected: !isEnteringAsAdmin,
                 onTap: () => setState(() {
                   isEnteringAsAdmin = false;
-                  if (selectedSection != null && joinNameController.text == selectedSection!.creatorName) {
-                    joinNameController.text = 'Student User';
+                  if (joinNameController.text.trim().isEmpty) {
+                    joinNameController.text = 'user';
                   }
                 }),
               ),
@@ -734,9 +754,8 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
                 selected: isEnteringAsAdmin,
                 onTap: () => setState(() {
                   isEnteringAsAdmin = true;
-                  final creator = selectedSection?.creatorName;
-                  if (selectedSection != null && (joinNameController.text == 'Student User' || joinNameController.text.isEmpty)) {
-                    joinNameController.text = (creator != null && creator.isNotEmpty) ? creator : 'Shuvo';
+                  if (joinNameController.text.trim().isEmpty) {
+                    joinNameController.text = 'user';
                   }
                 }),
               ),
@@ -758,9 +777,9 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
         ),
         const SizedBox(height: 14),
 
-        // 7. Classroom Password
+        // 7. Classroom Section Code
         Label(
-          isEnteringAsAdmin ? 'Admin Password' : 'Student Access Password',
+          'Section Code',
           color: c.secondary,
         ),
         const SizedBox(height: 6),
@@ -769,7 +788,7 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
           scrollPadding: const EdgeInsets.only(bottom: 80),
           obscureText: joinObscurePassword,
           decoration: InputDecoration(
-            hintText: isEnteringAsAdmin ? 'Enter Admin Password' : 'Enter Student Password',
+            hintText: 'Enter Section Code',
             prefixIcon: const Icon(CupertinoIcons.lock, size: 18),
             suffixIcon: IconButton(
               icon: Icon(
@@ -984,27 +1003,43 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
         ),
         const SizedBox(height: 14),
 
-        // Admin Password & Student Password
-        Label('Admin Password (for classroom controls)', color: c.secondary),
+        // Section Code Fields (Field 1: Set Section Code, Field 2: Confirm Section Code)
+        Label('Set Section Code', color: c.secondary),
         const SizedBox(height: 6),
         TextField(
-          controller: createAdminPassController,
+          controller: createSectionCodeController,
           scrollPadding: const EdgeInsets.only(bottom: 80),
-          decoration: const InputDecoration(
-            hintText: 'Set a secret Admin password',
-            prefixIcon: Icon(CupertinoIcons.shield_lefthalf_fill, size: 18),
+          obscureText: createObscureCode,
+          decoration: InputDecoration(
+            hintText: 'Set Section Code',
+            prefixIcon: const Icon(CupertinoIcons.lock, size: 18),
+            suffixIcon: IconButton(
+              icon: Icon(
+                createObscureCode ? CupertinoIcons.eye_slash : CupertinoIcons.eye,
+                size: 18,
+              ),
+              onPressed: () => setState(() => createObscureCode = !createObscureCode),
+            ),
           ),
         ),
         const SizedBox(height: 14),
 
-        Label('Student Access Password (for your classmates)', color: c.secondary),
+        Label('Confirm Section Code', color: c.secondary),
         const SizedBox(height: 6),
         TextField(
-          controller: createStudentPassController,
+          controller: confirmSectionCodeController,
           scrollPadding: const EdgeInsets.only(bottom: 80),
-          decoration: const InputDecoration(
-            hintText: 'Set student access password',
-            prefixIcon: Icon(CupertinoIcons.person_2, size: 18),
+          obscureText: confirmObscureCode,
+          decoration: InputDecoration(
+            hintText: 'Confirm Section Code',
+            prefixIcon: const Icon(CupertinoIcons.lock_shield, size: 18),
+            suffixIcon: IconButton(
+              icon: Icon(
+                confirmObscureCode ? CupertinoIcons.eye_slash : CupertinoIcons.eye,
+                size: 18,
+              ),
+              onPressed: () => setState(() => confirmObscureCode = !confirmObscureCode),
+            ),
           ),
         ),
         const SizedBox(height: 22),
@@ -1022,48 +1057,674 @@ class _SectionEntrySheetState extends State<SectionEntrySheet> {
     );
   }
 
-  Widget _buildOwnerTab(MyClassColors c) {
+  Widget _buildTeacherTab(MyClassColors c) {
+    final teacherService = TeacherSectionService.instance;
+    final isSignedIn = teacherService.isSignedIn;
+
+    if (!isSignedIn) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Surface(
+            color: c.sageBg,
+            border: false,
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                Icon(CupertinoIcons.briefcase_fill, size: 20, color: c.sage),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Teacher Mode allows faculty members to manage assigned classroom sections, routines, and coordinate with students.',
+                    style: context.type.bodySmall?.copyWith(color: c.sage, height: 1.35),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          ChoiceBar<int>(
+            values: const [0, 1],
+            selected: teacherAuthTab,
+            label: (i) => i == 0 ? 'Teacher Sign In' : 'Register Account',
+            onChanged: (i) {
+              setState(() {
+                teacherAuthTab = i;
+                errorMessage = null;
+              });
+            },
+          ),
+          const SizedBox(height: 18),
+
+          if (teacherAuthTab == 1) ...[
+            // Teacher Sign Up (1. Name, 2. Email, 3. Password)
+            Label('Name *', color: c.secondary),
+            const SizedBox(height: 6),
+            TextField(
+              controller: teacherNameController,
+              decoration: const InputDecoration(
+                hintText: 'e.g. Dr. Tariqul Islam',
+                prefixIcon: Icon(CupertinoIcons.person, size: 18),
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            Label('Email *', color: c.secondary),
+            const SizedBox(height: 6),
+            TextField(
+              controller: teacherEmailController,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(
+                hintText: 'e.g. tariqul@leading.edu',
+                prefixIcon: Icon(CupertinoIcons.mail, size: 18),
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            Label('Password *', color: c.secondary),
+            const SizedBox(height: 6),
+            TextField(
+              controller: teacherPassController,
+              obscureText: teacherObscurePass,
+              decoration: InputDecoration(
+                hintText: 'Create teacher password',
+                prefixIcon: const Icon(CupertinoIcons.lock, size: 18),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    teacherObscurePass ? CupertinoIcons.eye_slash : CupertinoIcons.eye,
+                    size: 18,
+                  ),
+                  onPressed: () => setState(() => teacherObscurePass = !teacherObscurePass),
+                ),
+              ),
+            ),
+            const SizedBox(height: 22),
+
+            FilledButton(
+              onPressed: () {
+                final name = teacherNameController.text.trim();
+                final email = teacherEmailController.text.trim();
+                final pass = teacherPassController.text.trim();
+
+                if (name.isEmpty || email.isEmpty || pass.isEmpty) {
+                  setState(() => errorMessage = 'Name, email, and password are all required for teacher registration.');
+                  return;
+                }
+
+                teacherService.registerTeacher(name: name, email: email, password: pass);
+                setState(() {
+                  isAddingTeacherSection = true;
+                  errorMessage = null;
+                });
+                feedback(context, 'Teacher account registered! Automatically signed in.');
+              },
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(50),
+                backgroundColor: c.sage,
+              ),
+              child: const Text('Register & Sign In as Teacher'),
+            ),
+            const SizedBox(height: 12),
+            Center(
+              child: TextButton(
+                onPressed: () => setState(() => teacherAuthTab = 0),
+                child: const Text('Already have a teacher account? Sign In'),
+              ),
+            ),
+          ] else ...[
+            // Teacher Sign In
+            Label('Email', color: c.secondary),
+            const SizedBox(height: 6),
+            TextField(
+              controller: teacherEmailController,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(
+                hintText: 'e.g. tariqul@leading.edu or sami',
+                prefixIcon: Icon(CupertinoIcons.mail, size: 18),
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            Label('Password', color: c.secondary),
+            const SizedBox(height: 6),
+            TextField(
+              controller: teacherPassController,
+              obscureText: teacherObscurePass,
+              decoration: InputDecoration(
+                hintText: 'Enter teacher password (e.g. teacher)',
+                prefixIcon: const Icon(CupertinoIcons.lock, size: 18),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    teacherObscurePass ? CupertinoIcons.eye_slash : CupertinoIcons.eye,
+                    size: 18,
+                  ),
+                  onPressed: () => setState(() => teacherObscurePass = !teacherObscurePass),
+                ),
+              ),
+            ),
+            const SizedBox(height: 22),
+
+            FilledButton(
+              onPressed: () {
+                final email = teacherEmailController.text.trim();
+                final pass = teacherPassController.text.trim();
+
+                // Quick teacher access check: password "teacher" or email "teacher"
+                if (pass.toLowerCase() == 'teacher' || email.toLowerCase() == 'teacher') {
+                  teacherService.signInTeacher(
+                    email: email.isEmpty ? 'tariqul@leading.edu' : email,
+                    password: 'teacher',
+                  );
+                  setState(() {
+                    errorMessage = null;
+                    if (teacherService.approvedSections.isEmpty && teacherService.pendingSections.isEmpty) {
+                      isAddingTeacherSection = true;
+                    }
+                  });
+                  feedback(context, 'Signed in as Teacher.');
+                  return;
+                }
+
+                // Universal Owner Login check: sami / sami
+                if ((email.toLowerCase() == 'sami' && pass == 'sami') || pass == 'sami') {
+                  _authenticateAsOwner();
+                  return;
+                }
+
+                if (email.isEmpty || pass.isEmpty) {
+                  setState(() => errorMessage = 'Please enter teacher email and password.');
+                  return;
+                }
+
+                final ok = teacherService.signInTeacher(email: email, password: pass);
+                if (ok) {
+                  setState(() {
+                    errorMessage = null;
+                    if (teacherService.approvedSections.isEmpty && teacherService.pendingSections.isEmpty) {
+                      isAddingTeacherSection = true;
+                    }
+                  });
+                  feedback(context, 'Signed in as Teacher.');
+                } else {
+                  setState(() => errorMessage = 'Invalid teacher credentials.');
+                }
+              },
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(50),
+                backgroundColor: c.sage,
+              ),
+              child: const Text('Sign In to Teacher Mode'),
+            ),
+            const SizedBox(height: 6),
+
+            Center(
+              child: TextButton.icon(
+                onPressed: () {
+                  teacherService.signInAsPreviewTeacher();
+                  setState(() {
+                    errorMessage = null;
+                    if (teacherService.approvedSections.isEmpty && teacherService.pendingSections.isEmpty) {
+                      isAddingTeacherSection = true;
+                    }
+                  });
+                  feedback(context, 'Signed in as Preview Teacher (Dr. Tariqul Islam).');
+                },
+                icon: const Icon(CupertinoIcons.sparkles, size: 15),
+                label: const Text('Demo: Sign In as Dr. Tariqul Islam'),
+                style: TextButton.styleFrom(
+                  foregroundColor: c.sage,
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+
+            Row(
+              children: [
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton(
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Forgot Password'),
+                            content: const Text(
+                              'A password recovery verification link will be sent to your institutional academic email address.\n\nContact your university IT administrator if you require immediate credential reset.',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(ctx).pop(),
+                                child: const Text('OK'),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                      style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                      child: const FittedBox(fit: BoxFit.scaleDown, child: Text('Forgot Password?')),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () => setState(() => teacherAuthTab = 1),
+                      style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                      child: const FittedBox(fit: BoxFit.scaleDown, child: Text('Create an Account')),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(child: Divider(color: c.line)),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Text('OR', style: TextStyle(fontSize: 11, color: c.secondary)),
+                ),
+                Expanded(child: Divider(color: c.line)),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            OutlinedButton.icon(
+              onPressed: () {
+                teacherService.signInTeacher(
+                  email: 'teacher.google@leading.edu',
+                  password: 'google-authenticated',
+                );
+                setState(() {
+                  errorMessage = null;
+                  if (teacherService.approvedSections.isEmpty && teacherService.pendingSections.isEmpty) {
+                    isAddingTeacherSection = true;
+                  }
+                });
+                feedback(context, 'Signed in with Google (teacher.google@leading.edu).');
+              },
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(48),
+                side: BorderSide(color: c.line),
+              ),
+              icon: const Icon(CupertinoIcons.globe, size: 18),
+              label: const Text('Sign in with Google / Gmail'),
+            ),
+          ],
+        ],
+      );
+    }
+
+    // Teacher IS signed in:
+    final teacher = teacherService.currentTeacher;
+    final approved = teacherService.approvedSections;
+    final pending = teacherService.pendingSections;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Teacher Account Banner
         Surface(
-          color: c.amberBg,
-          border: false,
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           child: Row(
             children: [
-              Icon(CupertinoIcons.star_circle_fill, size: 20, color: c.amber),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'MyClass Owner Mode allows approving or rejecting submitted classrooms across all departments and batches.',
-                  style: context.type.bodySmall?.copyWith(color: c.amber, height: 1.35),
+              Container(
+                width: 38,
+                height: 38,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: c.sageBg,
+                  borderRadius: BorderRadius.circular(10),
                 ),
+                child: Text(
+                  teacher?.name.isNotEmpty == true ? teacher!.name[0].toUpperCase() : 'T',
+                  style: TextStyle(fontWeight: FontWeight.bold, color: c.sage, fontSize: 16),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(teacher?.name ?? 'Teacher', style: context.type.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
+                    Text(teacher?.email ?? '', style: context.type.bodySmall?.copyWith(color: c.secondary)),
+                  ],
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  teacherService.signOutTeacher();
+                  setState(() {});
+                  feedback(context, 'Signed out of Teacher account.');
+                },
+                child: const Text('Sign out', style: TextStyle(fontSize: 12)),
               ),
             ],
           ),
         ),
         const SizedBox(height: 18),
-        Label('Owner Master Passkey', color: c.secondary),
-        const SizedBox(height: 6),
-        TextField(
-          controller: ownerPassController,
-          scrollPadding: const EdgeInsets.only(bottom: 80),
-          obscureText: true,
-          decoration: const InputDecoration(
-            hintText: 'Enter owner master passkey (e.g. yyoyyo)',
-            prefixIcon: Icon(CupertinoIcons.lock_shield, size: 18),
+
+        if (isAddingTeacherSection) ...[
+          // Section Selection Flow
+          Surface(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Select Your Section', style: context.type.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                    IconButton(
+                      icon: const Icon(CupertinoIcons.xmark, size: 16),
+                      onPressed: () => setState(() => isAddingTeacherSection = false),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                Label('University / Varsity', color: c.secondary),
+                const SizedBox(height: 6),
+                InkWell(
+                  onTap: () => _showUniversityPicker(context, isCreate: false),
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: c.line),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(CupertinoIcons.building_2_fill, size: 16, color: c.secondary),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            selectedUniversity?.name ?? 'Select University',
+                            style: context.type.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                        Icon(CupertinoIcons.chevron_down, size: 14, color: c.faint),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                Label('Batch', color: c.secondary),
+                const SizedBox(height: 6),
+                DropdownButtonFormField<Batch>(
+                  value: selectedBatch,
+                  decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12)),
+                  items: batches.map((b) => DropdownMenuItem(value: b, child: Text(b.label))).toList(),
+                  onChanged: (b) {
+                    if (b != null) {
+                      setState(() => selectedBatch = b);
+                      _loadSectionsForBatch(b);
+                    }
+                  },
+                ),
+                const SizedBox(height: 12),
+
+                Label('Section', color: c.secondary),
+                const SizedBox(height: 6),
+                DropdownButtonFormField<Section>(
+                  value: selectedSection,
+                  decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12)),
+                  items: sections.map((s) => DropdownMenuItem(value: s, child: Text(s.label))).toList(),
+                  onChanged: (s) => setState(() => selectedSection = s),
+                ),
+                const SizedBox(height: 12),
+
+                Label('Section Code *', color: c.secondary),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: teacherSectionCodeController,
+                  decoration: const InputDecoration(
+                    hintText: 'Enter Section Code for verification',
+                    prefixIcon: Icon(CupertinoIcons.lock, size: 18),
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                Surface(
+                  color: c.subtle,
+                  border: false,
+                  padding: const EdgeInsets.all(10),
+                  child: Row(
+                    children: [
+                      Icon(CupertinoIcons.info, size: 16, color: c.secondary),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Teacher section access requires approval from Section Admin or Owner before becoming active.',
+                          style: TextStyle(fontSize: 11, color: c.secondary),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+
+                FilledButton(
+                  onPressed: () {
+                    final code = teacherSectionCodeController.text.trim();
+                    if (code.isEmpty) {
+                      setState(() => errorMessage = 'Please enter the Section Code.');
+                      return;
+                    }
+                    if (selectedSection == null) {
+                      setState(() => errorMessage = 'Please select a section.');
+                      return;
+                    }
+
+                    teacherService.requestSection(
+                      sectionId: selectedSection!.id,
+                      sectionName: selectedSection!.label,
+                      batchName: selectedBatch?.label ?? 'Batch 64',
+                      departmentName: selectedDept?.name ?? 'Computer Science & Engineering',
+                      universityName: selectedUniversity?.name ?? 'Leading University',
+                      sectionCode: code,
+                    );
+
+                    setState(() {
+                      isAddingTeacherSection = false;
+                      teacherSectionCodeController.clear();
+                      errorMessage = null;
+                    });
+
+                    feedback(context, 'Section request submitted! Awaiting Admin or Owner approval.');
+                  },
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(46),
+                    backgroundColor: c.sage,
+                  ),
+                  child: const Text('Submit Request for Approval'),
+                ),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 22),
-        FilledButton(
-          onPressed: _loginAsOwner,
-          style: FilledButton.styleFrom(
-            minimumSize: const Size.fromHeight(52),
-            backgroundColor: c.amber,
+        ] else ...[
+          // My Sections List
+          Row(
+            children: [
+              Expanded(
+                child: Text('My Sections', style: context.type.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: c.sageBg,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '${approved.length} Active',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: c.sage),
+                ),
+              ),
+            ],
           ),
-          child: const Text('Enter as MyClass Owner'),
-        ),
+          const SizedBox(height: 4),
+          Text(
+            'Select an approved section to manage class schedules and activities.',
+            style: context.type.bodySmall?.copyWith(color: c.secondary),
+          ),
+          const SizedBox(height: 16),
+
+          if (approved.isEmpty && pending.isEmpty)
+            const EmptyState(
+              'No sections added yet.',
+              'Tap + Add Section below to request access to your class sections.',
+              icon: CupertinoIcons.folder_badge_plus,
+            )
+          else ...[
+            for (final sec in approved) ...[
+              Surface(
+                padding: const EdgeInsets.all(14),
+                child: InkWell(
+                  onTap: () {
+                    // Enter section management as Teacher
+                    final membership = teacherService.createMembershipForSection(sec);
+                    context.read<AuthBloc>().add(
+                      AuthSectionLoggedIn(
+                        name: teacher?.name ?? 'Teacher',
+                        membership: membership,
+                        grant: SectionGrant(sec.sectionId, 'teacher-token-${sec.sectionId}', role: UserRole.teacher),
+                      ),
+                    );
+                    Navigator.of(context).pop();
+                  },
+                  borderRadius: BorderRadius.circular(10),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: c.sageBg,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          sec.sectionName.replaceAll('Section ', ''),
+                          style: TextStyle(fontWeight: FontWeight.bold, color: c.sage, fontSize: 16),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(sec.sectionName, style: context.type.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${sec.batchName} · ${sec.universityName}',
+                              style: context.type.bodySmall?.copyWith(color: c.secondary),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: c.sageBg,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text('Active', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: c.sage)),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(CupertinoIcons.chevron_right, size: 14, color: c.faint),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
+
+            // Pending Approval Sections
+            for (final sec in pending) ...[
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: c.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: c.amber.withOpacity(0.4)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(CupertinoIcons.clock_fill, size: 16, color: c.amber),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '${sec.sectionName} (${sec.batchName})',
+                            style: context.type.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: c.amberBg,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'Pending Approval',
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: c.amber),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Access requested with Section Code. Awaiting Admin or Owner approval.',
+                      style: context.type.bodySmall?.copyWith(color: c.secondary),
+                    ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: () {
+                          teacherService.approveSection(sec.sectionId);
+                          setState(() {});
+                          feedback(context, 'Approved ${sec.sectionName}! Now active in My Sections.');
+                        },
+                        icon: const Icon(CupertinoIcons.checkmark_shield, size: 14),
+                        label: const Text('Approve (Admin/Owner)'),
+                        style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          foregroundColor: c.sage,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
+          ],
+
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: () {
+              setState(() {
+                isAddingTeacherSection = true;
+                errorMessage = null;
+              });
+            },
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+            ),
+            icon: const Icon(CupertinoIcons.plus, size: 16),
+            label: const Text('+ Add Section'),
+          ),
+        ],
       ],
     );
   }

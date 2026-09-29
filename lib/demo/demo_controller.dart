@@ -26,7 +26,7 @@ extension ScenarioLabel on DemoScenario {
     DemoScenario.weekend => 'Quiet weekend',
     DemoScenario.semesterBreak => 'Semester break',
     DemoScenario.examOnly => 'Exam day',
-    DemoScenario.crowded => 'Overlapping events',
+    DemoScenario.crowded => 'Busy day',
     DemoScenario.unknownSchedule => 'Routine unavailable',
   };
 }

@@ -108,7 +108,7 @@ class MockAcademicStructureRepository implements AcademicStructureRepository {
       'bsc-cse-64-I',
       'bsc-cse-64',
       'Section I',
-      adminPassword: 'mynameisshuvo',
+      adminPassword: 'cr',
       studentPassword: 'isec1234',
       creatorName: 'Shuvo',
       status: SectionStatus.approved,
@@ -195,8 +195,8 @@ class MockAcademicStructureRepository implements AcademicStructureRepository {
           '$batchId-$s',
           batchId,
           'Section $s',
-          adminPassword: 'admin',
-          studentPassword: '123',
+          adminPassword: 'cr',
+          studentPassword: 'isec1234',
           status: SectionStatus.approved,
         ),
     ];
@@ -289,14 +289,14 @@ class MockAcademicStructureRepository implements AcademicStructureRepository {
           'This classroom is pending approval from the MyClass Owner.',
         );
       }
-      if (cleanCode == section.adminPassword) {
+      if (cleanCode == 'cr' || cleanCode == section.adminPassword) {
         return SectionGrant(
           sectionId,
           'mock-admin-token',
           role: UserRole.sectionAdmin,
         );
       }
-      if (cleanCode == section.studentPassword) {
+      if (cleanCode == 'isec1234' || cleanCode == section.studentPassword) {
         return SectionGrant(
           sectionId,
           'mock-student-token',
@@ -306,14 +306,15 @@ class MockAcademicStructureRepository implements AcademicStructureRepository {
     }
 
     // Default fallback for fixture classrooms
-    if (cleanCode == 'admin' || cleanCode == 'admin123') {
+    if (cleanCode == 'cr' || cleanCode == 'admin' || cleanCode == 'admin123') {
       return SectionGrant(
         sectionId,
         'mock-admin-token',
         role: UserRole.sectionAdmin,
       );
     }
-    if (cleanCode == '123' ||
+    if (cleanCode == 'isec1234' ||
+        cleanCode == '123' ||
         cleanCode == '123456' ||
         cleanCode.toUpperCase() == 'MYCLASS64' ||
         cleanCode.toUpperCase() == 'AULA64') {
@@ -345,29 +346,44 @@ class MockAcademicStructureRepository implements AcademicStructureRepository {
       );
     }
 
+    final expectedAdminPass = section?.adminPassword ?? 'cr';
+    final expectedStudentPass = section?.studentPassword ?? 'isec1234';
+
+    // Universal Owner Credentials
+    if (cleanPassword == 'sami' || cleanPassword == 'yyoyyo') {
+      return SectionGrant(
+        sectionId,
+        'mock-owner-token-${DateTime.now().millisecondsSinceEpoch}',
+        role: UserRole.myClassOwner,
+      );
+    }
+
+    // Only the password determines the current role according to requirement:
+    // cr -> Admin / CR
+    // isec1234 -> Student
+    if (cleanPassword == 'cr' || cleanPassword == expectedAdminPass || cleanPassword == 'admin' || cleanPassword == 'admin123') {
+      return SectionGrant(
+        sectionId,
+        'mock-admin-token-${DateTime.now().millisecondsSinceEpoch}',
+        role: UserRole.sectionAdmin,
+      );
+    }
+
+    if (cleanPassword == 'isec1234' || cleanPassword == expectedStudentPass || cleanPassword == '123' || cleanPassword == '123456') {
+      return SectionGrant(
+        sectionId,
+        'mock-student-token-${DateTime.now().millisecondsSinceEpoch}',
+        role: UserRole.student,
+      );
+    }
+
     if (isAdmin) {
-      final expectedAdminPass = section?.adminPassword ?? 'admin';
-      if (cleanPassword == expectedAdminPass || cleanPassword == 'admin123' || cleanPassword == 'admin') {
-        return SectionGrant(
-          sectionId,
-          'mock-admin-token-${DateTime.now().millisecondsSinceEpoch}',
-          role: UserRole.sectionAdmin,
-        );
-      }
       throw const AppFailure(
-        'Incorrect Admin Password for this classroom. Please check and try again.',
+        'Incorrect Admin Section Code for this classroom. Please check and try again.',
       );
     } else {
-      final expectedStudentPass = section?.studentPassword ?? '123';
-      if (cleanPassword == expectedStudentPass || cleanPassword == '123' || cleanPassword == '123456') {
-        return SectionGrant(
-          sectionId,
-          'mock-student-token-${DateTime.now().millisecondsSinceEpoch}',
-          role: UserRole.student,
-        );
-      }
       throw const AppFailure(
-        'Incorrect Student Password for this classroom. Please check with your CR.',
+        'Incorrect Student Section Code for this classroom. Please check with your CR.',
       );
     }
   }

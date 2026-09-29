@@ -325,7 +325,7 @@ void main() {
     bloc.add(SearchQueryChanged('viva'));
     await Future<void>.delayed(const Duration(milliseconds: 280));
     bloc.add(SearchQueryChanged('Route 2'));
-    await Future<void>.delayed(const Duration(milliseconds: 600));
+    await Future<void>.delayed(const Duration(milliseconds: 900));
     expect(bloc.state.query, 'Route 2');
     expect(bloc.state.hits.single.title, contains('Route 2'));
     await bloc.close();

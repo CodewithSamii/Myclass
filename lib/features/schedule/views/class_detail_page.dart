@@ -1,17 +1,12 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart' hide Badge;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/format.dart';
-import '../../../core/models.dart';
 import '../../../design_system/tokens.dart';
 import '../../../shared/widgets/primitives.dart';
 import '../../campus/bloc/campus_bloc.dart';
 import '../../campus/views/faculty_page.dart';
 import '../../profile/bloc/profile_bloc.dart';
 import '../bloc/schedule_bloc.dart';
-import 'routine_editor.dart';
-import 'shift_class_sheet.dart';
-import 'temporary_class_sheet.dart';
 
 class ClassDetailPage extends StatelessWidget {
   const ClassDetailPage({
@@ -52,34 +47,11 @@ class ClassDetailPage extends StatelessWidget {
         .where((f) => f.id == course.facultyId)
         .firstOrNull;
 
-    final canManage = context
-        .watch<ProfileBloc>()
-        .state
-        .profile
-        .membership
-        .canManage;
 
     return DetailPage(
       title: session.isTemporary
           ? 'Temporary Class'
           : (session.isLab ? 'Lab session' : 'Class'),
-      actions: [
-        if (canManage && session.isTemporary)
-          IconButton(
-            tooltip: 'Edit temporary class',
-            onPressed: () => openSheet(
-              context,
-              TemporaryClassSheet(initialDate: day, sessionToEdit: session),
-            ),
-            icon: const Icon(CupertinoIcons.pencil, size: 20),
-          )
-        else if (canManage)
-          IconButton(
-            tooltip: 'Edit repeating routine',
-            onPressed: () => openSheet(context, RoutineEditor(session: session)),
-            icon: const Icon(CupertinoIcons.pencil, size: 20),
-          ),
-      ],
       child: ListView(
         padding: const EdgeInsets.all(24),
         children: [
@@ -239,67 +211,6 @@ class ClassDetailPage extends StatelessWidget {
             ),
           ],
 
-          if (canManage) ...[
-            const SectionHeader('Admin options'),
-            if (session.isTemporary) ...[
-              SettingsRow(
-                'Edit temporary class',
-                subtitle: 'Update schedule, room/link or instructions',
-                icon: CupertinoIcons.pencil,
-                onTap: () => openSheet(
-                  context,
-                  TemporaryClassSheet(initialDate: day, sessionToEdit: session),
-                ),
-              ),
-              SettingsRow(
-                'Remove temporary class',
-                subtitle: 'Delete from schedule and inform students',
-                icon: CupertinoIcons.trash,
-                onTap: () => _confirmDeleteTemp(context, session),
-              ),
-            ] else ...[
-              SettingsRow(
-                session.cancelled ? 'Restore class for this date' : 'Cancel class for this date',
-                subtitle: session.cancelled
-                    ? 'Reinstate class on ${Fmt.shortDate(day)} and inform students'
-                    : 'Cancel slot on ${Fmt.shortDate(day)} and notify students',
-                icon: session.cancelled
-                    ? CupertinoIcons.arrow_counterclockwise
-                    : CupertinoIcons.clear_circled,
-                onTap: () {
-                  context.read<ScheduleBloc>().add(
-                    CancelSessionOnDateRequested(
-                      session: session,
-                      date: day,
-                      cancel: !session.cancelled,
-                    ),
-                  );
-                  feedback(
-                    context,
-                    session.cancelled
-                        ? 'Class restored for ${Fmt.shortDate(day)}.'
-                        : 'Class cancelled for ${Fmt.shortDate(day)}.',
-                  );
-                },
-              ),
-              SettingsRow(
-                'Shift class to another date / slot',
-                subtitle: 'Move class & attached events to another schedule',
-                icon: CupertinoIcons.arrow_right_arrow_left,
-                onTap: () => openSheet(
-                  context,
-                  ShiftClassSheet(session: session, sourceDate: day),
-                ),
-              ),
-              SettingsRow(
-                'Edit repeating weekly routine',
-                subtitle: 'Change permanent weekly timetable for this section',
-                icon: CupertinoIcons.slider_horizontal_3,
-                onTap: () => openSheet(context, RoutineEditor(session: session)),
-              ),
-            ],
-          ],
-
           const SectionHeader('Class reminder'),
           Text(
             '${Fmt.offsets(context.watch<ProfileBloc>().state.profile.reminders.classOffsets)} before class',
@@ -313,34 +224,6 @@ class ClassDetailPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 32),
-        ],
-      ),
-    );
-  }
-
-  void _confirmDeleteTemp(BuildContext context, ClassSession session) {
-    showCupertinoDialog(
-      context: context,
-      builder: (ctx) => CupertinoAlertDialog(
-        title: const Text('Delete Temporary Class'),
-        content: const Text('Are you sure you want to remove this temporary class? Students will be notified.'),
-        actions: [
-          CupertinoDialogAction(
-            child: const Text('Cancel'),
-            onPressed: () => Navigator.pop(ctx),
-          ),
-          CupertinoDialogAction(
-            isDestructiveAction: true,
-            child: const Text('Delete'),
-            onPressed: () {
-              Navigator.pop(ctx);
-              context.read<ScheduleBloc>().add(
-                TemporaryClassDeleteRequested(session.id),
-              );
-              Navigator.pop(context);
-              feedback(context, 'Temporary class removed.');
-            },
-          ),
         ],
       ),
     );

@@ -13,6 +13,7 @@ abstract interface class ScheduleRepository {
     required ClassSession session,
     required DateTime date,
     required bool cancel,
+    bool notifyStudents = true,
   });
   Future<void> shiftSession({
     required String sectionId,
@@ -22,6 +23,7 @@ abstract interface class ScheduleRepository {
     required int newStartMinute,
     required int newEndMinute,
     String? newRoom,
+    bool notifyStudents = true,
   });
   Future<void> saveTemporaryClass(ClassSession session);
   Future<void> deleteTemporaryClass(String sectionId, String sessionId);

@@ -123,6 +123,7 @@ class MockScheduleRepository implements ScheduleRepository {
     required ClassSession session,
     required DateTime date,
     required bool cancel,
+    bool notifyStudents = true,
   }) async {
     await store.checkWrite(shared: true, section: sectionId);
     final list = store.routineFor(sectionId);
@@ -191,6 +192,7 @@ class MockScheduleRepository implements ScheduleRepository {
     required int newStartMinute,
     required int newEndMinute,
     String? newRoom,
+    bool notifyStudents = true,
   }) async {
     await store.checkWrite(shared: true, section: sectionId);
     final list = store.routineFor(sectionId);
@@ -259,23 +261,25 @@ class MockScheduleRepository implements ScheduleRepository {
       }
     }
 
-    final courseName = session.customCourseName?.isNotEmpty == true
-        ? session.customCourseName!
-        : (Fixtures.courses.where((c) => c.id == session.courseId).firstOrNull?.compactName ?? 'Class');
+    if (notifyStudents) {
+      final courseName = session.customCourseName?.isNotEmpty == true
+          ? session.customCourseName!
+          : (Fixtures.courses.where((c) => c.id == session.courseId).firstOrNull?.compactName ?? 'Class');
 
-    store.updates
-        .putIfAbsent(sectionId, () => [])
-        .insert(
-          0,
-          UpdateFeedItem(
-            id: 'shift-${DateTime.now().microsecondsSinceEpoch}',
-            eventId: '',
-            sessionId: session.id,
-            title: '$courseName shifted to ${Fmt.shortDate(targetDate)}',
-            detail: 'Moved from ${Fmt.shortDate(sourceDate)} (${Fmt.minute(session.startMinute)}) to ${Fmt.shortDate(targetDate)} (${Fmt.minute(newStartMinute)}–${Fmt.minute(newEndMinute)}).',
-            at: store.demo.now,
-          ),
-        );
+      store.updates
+          .putIfAbsent(sectionId, () => [])
+          .insert(
+            0,
+            UpdateFeedItem(
+              id: 'shift-${DateTime.now().microsecondsSinceEpoch}',
+              eventId: '',
+              sessionId: session.id,
+              title: '$courseName shifted to ${Fmt.shortDate(targetDate)}',
+              detail: 'Moved from ${Fmt.shortDate(sourceDate)} (${Fmt.minute(session.startMinute)}) to ${Fmt.shortDate(targetDate)} (${Fmt.minute(newStartMinute)}–${Fmt.minute(newEndMinute)}).',
+              at: store.demo.now,
+            ),
+          );
+    }
     if (!store.demo.state.offline) store.updatedAt = store.demo.now;
     store.notify();
   }

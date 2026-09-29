@@ -1,12 +1,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' hide Badge;
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/clock.dart';
 import '../../../core/format.dart';
 import '../../../core/models.dart';
 import '../../../design_system/tokens.dart';
 import '../../../shared/widgets/primitives.dart';
+import '../../../shared/widgets/chocolate_block_date_bar.dart';
 import '../../events/bloc/events_bloc.dart';
 
 import '../../events/views/event_detail_page.dart';
@@ -19,6 +19,8 @@ import '../../section_admin/views/set_routine_page.dart';
 import '../bloc/schedule_bloc.dart';
 import 'class_detail_page.dart';
 import 'temporary_class_sheet.dart';
+import 'admin_options_sheet.dart';
+import '../../section_admin/views/event_editor_page.dart';
 
 class SchedulePage extends StatelessWidget {
   const SchedulePage({super.key});
@@ -40,7 +42,6 @@ class SchedulePage extends StatelessWidget {
     );
 
     final selectedEntries = entries(s.selected);
-    final conflicts = AgendaProjection.conflicts(selectedEntries);
 
     final dueToday = events
         .where((e) =>
@@ -117,21 +118,62 @@ class SchedulePage extends StatelessWidget {
               ),
               if (profile.membership.canManage || profile.membership.isOwner) ...[
                 const SizedBox(height: 2),
-                Row(
-                  children: [
-                    TextButton.icon(
-                      onPressed: () => openSheet(
-                        context,
-                        TemporaryClassSheet(initialDate: s.selected),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      TextButton.icon(
+                        onPressed: () => openSheet(
+                          context,
+                          TemporaryClassSheet(initialDate: s.selected),
+                        ),
+                        icon: const Icon(CupertinoIcons.calendar_badge_plus, size: 14),
+                        label: const Text('+ Temp Class'),
+                        style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                        ),
                       ),
-                      icon: const Icon(CupertinoIcons.calendar_badge_plus, size: 14),
-                      label: const Text('+ Temp Class'),
-                      style: TextButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                      const SizedBox(width: 4),
+                      TextButton.icon(
+                        onPressed: () {
+                          final daySessions = s.sessions.where((ss) => ss.weekday == s.selected.weekday).toList();
+                          if (daySessions.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('No routine classes scheduled for ${Fmt.weekday(s.selected)}. Events can only be assigned to existing routine classes.'),
+                                backgroundColor: context.colors.amber,
+                              ),
+                            );
+                          } else {
+                            openPage(
+                              context,
+                              EventEditorPage(initialDate: s.selected),
+                            );
+                          }
+                        },
+                        icon: const Icon(CupertinoIcons.plus_circle, size: 14),
+                        label: const Text('Add Event'),
+                        style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 4),
+                      TextButton.icon(
+                        onPressed: () => openSheet(
+                          context,
+                          AdminOptionsSheet(selectedDate: s.selected),
+                        ),
+                        icon: const Icon(CupertinoIcons.slider_horizontal_3, size: 14),
+                        label: const Text('Admin Options'),
+                        style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
 
@@ -184,31 +226,6 @@ class SchedulePage extends StatelessWidget {
                 ),
               ],
 
-              if (conflicts.isNotEmpty) ...[
-                const SizedBox(height: 10),
-                Surface(
-                  color: c.amberBg,
-                  border: false,
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    children: [
-                      Icon(
-                        CupertinoIcons.exclamationmark_triangle,
-                        size: 16,
-                        color: c.amber,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          '${conflicts.length} items overlap. Check latest updates.',
-                          style: context.type.bodySmall?.copyWith(color: c.amber),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-
               const SizedBox(height: 14),
 
               // 2-Column Schedule Table
@@ -217,13 +234,13 @@ class SchedulePage extends StatelessWidget {
                 timeSlots: s.timeSlots,
                 now: s.now,
                 onTapEntry: (entry) {
-                  if (entry.event != null) {
-                    openPage(context, EventDetailPage(id: entry.event!.id));
-                  } else if (entry.session != null) {
+                  if (entry.session != null) {
                     openPage(
                       context,
                       ClassDetailPage(sessionId: entry.session!.id, day: entry.day),
                     );
+                  } else if (entry.event != null) {
+                    openPage(context, EventDetailPage(id: entry.event!.id));
                   }
                 },
               ),
@@ -267,123 +284,7 @@ class SchedulePage extends StatelessWidget {
   }
 }
 
-/// 2-Row "Chocolate Block" Date Bar
-/// Top row: Date (e.g. "22 Nov")
-/// Bottom row: Day (e.g. "Monday")
-class _ChocolateBlockDateBar extends StatelessWidget {
-  const _ChocolateBlockDateBar({
-    required this.selected,
-    required this.now,
-    required this.onDateSelected,
-  });
-
-  final DateTime selected;
-  final DateTime now;
-  final ValueChanged<DateTime> onDateSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    // Generate a 14-day window centered around today
-    final startDay = dateOnly(now).subtract(const Duration(days: 3));
-    final days = List.generate(18, (i) => startDay.add(Duration(days: i)));
-
-    return SizedBox(
-      height: 76,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        itemCount: days.length,
-        itemBuilder: (ctx, i) {
-          final day = days[i];
-          final isSelected = sameDay(day, selected);
-          final isToday = sameDay(day, now);
-
-          // Rich chocolate theme colors
-          const chocolateDark = Color(0xFF3E2723); // Deep rich cocoa
-          const chocolateMedium = Color(0xFF4E342E);
-          const chocolateCream = Color(0xFFFFF8E7);
-          const chocolateSubtle = Color(0xFFEFEBE9);
-
-          final isDark = Theme.of(context).brightness == Brightness.dark;
-
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: InkWell(
-              onTap: () {
-                HapticFeedback.selectionClick();
-                onDateSelected(day);
-              },
-              borderRadius: BorderRadius.circular(12),
-              child: AnimatedContainer(
-                duration: Motion.fast,
-                width: 78,
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
-                decoration: BoxDecoration(
-                  gradient: isSelected
-                      ? const LinearGradient(
-                          colors: [chocolateMedium, chocolateDark],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        )
-                      : null,
-                  color: isSelected
-                      ? null
-                      : (isDark ? const Color(0xFF231D1B) : chocolateSubtle),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isSelected
-                        ? const Color(0xFF8D6E63)
-                        : (isToday ? const Color(0xFF5D4037) : Colors.transparent),
-                    width: isSelected ? 1.5 : (isToday ? 1.2 : 0),
-                  ),
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.22),
-                            blurRadius: 6,
-                            offset: const Offset(0, 3),
-                          ),
-                        ]
-                      : null,
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Top row: Date (e.g. "22 Nov")
-                    Text(
-                      '${day.day} ${Fmt.month(day).substring(0, 3)}',
-                      maxLines: 1,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: isSelected
-                            ? chocolateCream
-                            : (isDark ? Colors.white : const Color(0xFF2E1C14)),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    // Bottom row: Day (e.g. "Monday")
-                    Text(
-                      Fmt.weekday(day),
-                      maxLines: 1,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                        color: isSelected
-                            ? chocolateCream.withOpacity(0.85)
-                            : (isDark ? Colors.grey[400] : const Color(0xFF6D4C41)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
+typedef _ChocolateBlockDateBar = ChocolateBlockDateBar;
 
 /// 2-Column Schedule Table Layout
 /// Left column: Time slot (e.g. 10:00–11:00)
@@ -567,6 +468,15 @@ class _ScheduleTableRow extends StatelessWidget {
 
     final isAcademicEvent = entry.event != null;
     final isCancelled = entry.cancelled;
+    final isShifted = entry.isShifted;
+
+    final attachedEvents = entry.session != null
+        ? (entry.events.isNotEmpty ? entry.events : (entry.event != null ? [entry.event!] : <AcademicEvent>[]))
+        : <AcademicEvent>[];
+
+    final baseName = (entry.course.name.isNotEmpty && entry.course.name != 'Course details pending')
+        ? entry.course.name
+        : entry.title;
 
     return InkWell(
       onTap: onTap,
@@ -616,8 +526,8 @@ class _ScheduleTableRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (isAcademicEvent && isMajorAssessment) ...[
-                    // Red bold underlined title for important events
+                  if (entry.session == null && isAcademicEvent && isMajorAssessment) ...[
+                    // Red bold underlined title for important standalone events
                     Text(
                       '${entry.event!.type.label.toUpperCase()}: ${entry.title}',
                       style: const TextStyle(
@@ -630,13 +540,30 @@ class _ScheduleTableRow extends StatelessWidget {
                       ),
                     ),
                   ] else ...[
-                    Text(
-                      entry.title,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: isCancelled ? c.faint : c.ink,
-                        decoration: isCancelled ? TextDecoration.lineThrough : null,
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: baseName,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: isCancelled ? c.faint : c.ink,
+                              decoration: isCancelled ? TextDecoration.lineThrough : null,
+                            ),
+                          ),
+                          if (isShifted) ...[
+                            const TextSpan(text: ' — '),
+                            TextSpan(
+                              text: 'Shifted',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: c.sage,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ],
@@ -663,7 +590,7 @@ class _ScheduleTableRow extends StatelessWidget {
                             ),
                           ),
                         ),
-                      if (entry.isShifted)
+                      if (isShifted)
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                           decoration: BoxDecoration(
@@ -695,7 +622,7 @@ class _ScheduleTableRow extends StatelessWidget {
                             ),
                           ),
                         ),
-                      if (!entry.isTemporary)
+                      if (!entry.isTemporary && entry.course.code != null && entry.course.code!.isNotEmpty)
                         Text(
                           entry.course.compactName,
                           style: TextStyle(
@@ -726,6 +653,50 @@ class _ScheduleTableRow extends StatelessWidget {
                         ),
                     ],
                   ),
+                  if (attachedEvents.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    for (final ev in attachedEvents) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(top: 3),
+                        child: InkWell(
+                          onTap: () {
+                            openPage(context, EventDetailPage(id: ev.id));
+                          },
+                          borderRadius: BorderRadius.circular(4),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Container(
+                                  width: 6,
+                                  height: 6,
+                                  margin: const EdgeInsets.only(right: 6),
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFFC62828),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    '${ev.type.label}: ${ev.title}',
+                                    style: const TextStyle(
+                                      color: Color(0xFFC62828),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                      decoration: TextDecoration.underline,
+                                      decorationColor: Color(0xFFC62828),
+                                      decorationThickness: 1.5,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ],
               ),
             ),

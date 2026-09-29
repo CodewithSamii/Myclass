@@ -5,9 +5,7 @@ import 'package:myclass/core/format.dart';
 import 'package:myclass/demo/demo_controller.dart';
 import 'package:myclass/demo/mock_store.dart';
 import 'package:myclass/demo/mock_schedule_repository.dart';
-import 'package:myclass/demo/fixtures.dart';
 import 'package:myclass/features/home/models/agenda_projection.dart';
-import 'package:myclass/features/profile/models/user_profile.dart';
 import 'support/harness.dart';
 
 void main() {
@@ -69,7 +67,7 @@ void main() {
     });
 
     test('AgendaProjection.isAllCancelled detects when all classes on a day are cancelled', () {
-      final session1 = ClassSession(
+      const session1 = ClassSession(
         id: 's1',
         sectionId: section,
         courseId: 'c1',
@@ -78,7 +76,7 @@ void main() {
         endMinute: 605,
         cancelled: true,
       );
-      final session2 = ClassSession(
+      const session2 = ClassSession(
         id: 's2',
         sectionId: section,
         courseId: 'c2',

@@ -290,15 +290,10 @@ class TimelineRow extends StatelessWidget {
                       ),
                     ),
                     if (entry.cancelled ||
-                        conflict ||
                         entry.event?.status == EventStatus.postponed) ...[
                       const SizedBox(height: 8),
                       Badge(
-                        entry.cancelled
-                            ? 'Cancelled'
-                            : conflict
-                            ? 'Schedule overlap'
-                            : 'Postponed',
+                        entry.cancelled ? 'Cancelled' : 'Postponed',
                         color: entry.cancelled ? c.red : c.amber,
                         background: entry.cancelled ? c.redBg : c.amberBg,
                       ),

@@ -127,7 +127,7 @@ class Section extends Equatable {
   ];
 }
 
-enum UserRole { student, sectionAdmin, departmentAdmin, universityAdmin, myClassOwner }
+enum UserRole { student, teacher, sectionAdmin, departmentAdmin, universityAdmin, myClassOwner }
 
 class SectionMembership extends Equatable {
   const SectionMembership({
@@ -152,7 +152,9 @@ class SectionMembership extends Equatable {
       universityId,
       universityName;
   final UserRole role;
+  bool get isTeacher => role == UserRole.teacher;
   bool get canManage =>
+      role == UserRole.teacher ||
       role == UserRole.sectionAdmin ||
       role == UserRole.departmentAdmin ||
       role == UserRole.universityAdmin ||

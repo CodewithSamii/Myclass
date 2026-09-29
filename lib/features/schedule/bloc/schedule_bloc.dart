@@ -125,10 +125,12 @@ class CancelSessionOnDateRequested extends ScheduleEvent {
     required this.session,
     required this.date,
     required this.cancel,
+    this.notifyStudents = true,
   });
   final ClassSession session;
   final DateTime date;
   final bool cancel;
+  final bool notifyStudents;
 }
 
 class ShiftSessionRequested extends ScheduleEvent {
@@ -139,11 +141,13 @@ class ShiftSessionRequested extends ScheduleEvent {
     required this.newStartMinute,
     required this.newEndMinute,
     this.newRoom,
+    this.notifyStudents = true,
   });
   final ClassSession session;
   final DateTime sourceDate, targetDate;
   final int newStartMinute, newEndMinute;
   final String? newRoom;
+  final bool notifyStudents;
 }
 
 class TemporaryClassSaveRequested extends ScheduleEvent {
@@ -250,6 +254,7 @@ class ScheduleBloc extends Bloc<ScheduleEvent, ScheduleState> {
           session: e.session,
           date: e.date,
           cancel: e.cancel,
+          notifyStudents: e.notifyStudents,
         );
         emit(state.copyWith(saving: false));
       } on AppFailure catch (f) {
@@ -270,6 +275,7 @@ class ScheduleBloc extends Bloc<ScheduleEvent, ScheduleState> {
           newStartMinute: e.newStartMinute,
           newEndMinute: e.newEndMinute,
           newRoom: e.newRoom,
+          notifyStudents: e.notifyStudents,
         );
         emit(state.copyWith(saving: false));
       } on AppFailure catch (f) {

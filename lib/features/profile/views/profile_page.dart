@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/models.dart';
 import '../../../design_system/tokens.dart';
 import '../../../shared/widgets/primitives.dart';
+import '../../../shared/widgets/about_sheet.dart';
 import '../../../demo/views/preview_page.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../notes/views/notes_page.dart';
@@ -19,6 +20,7 @@ class ProfilePage extends StatelessWidget {
     final s = context.watch<ProfileBloc>().state;
     final p = s.profile;
     final m = p.membership;
+    final isGuest = p.uid == 'guest';
     return ListView(
       key: const PageStorageKey('profile'),
       padding: EdgeInsets.zero,
@@ -31,25 +33,58 @@ class ProfilePage extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Container(
-                    width: 54,
-                    height: 54,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: context.colors.subtle,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Text(
-                      p.name.trim().isEmpty
-                          ? 'S'
-                          : p.name
-                                .trim()
-                                .split(' ')
-                                .take(2)
-                                .map((s) => s[0])
-                                .join()
-                                .toUpperCase(),
-                      style: context.type.titleLarge,
+                  InkWell(
+                    onTap: () => openSheet(context, const _AvatarPickerSheet()),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          width: 56,
+                          height: 56,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: context.colors.subtle,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: context.colors.line),
+                          ),
+                          child: (p.avatarUrl != null && p.avatarUrl!.isNotEmpty)
+                              ? _buildAvatarContent(context, p.avatarUrl!)
+                              : Text(
+                                  p.name.trim().isEmpty
+                                      ? 'S'
+                                      : p.name
+                                            .trim()
+                                            .split(' ')
+                                            .take(2)
+                                            .map((s) => s[0])
+                                            .join()
+                                            .toUpperCase(),
+                                  style: context.type.titleLarge,
+                                ),
+                        ),
+                        Positioned(
+                          right: -2,
+                          bottom: -2,
+                          child: Container(
+                            width: 20,
+                            height: 20,
+                            decoration: BoxDecoration(
+                              color: context.colors.ink,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Theme.of(context).scaffoldBackgroundColor,
+                                width: 2,
+                              ),
+                            ),
+                            child: Icon(
+                              CupertinoIcons.camera_fill,
+                              size: 10,
+                              color: context.colors.surface,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -162,6 +197,13 @@ class ProfilePage extends StatelessWidget {
                 icon: CupertinoIcons.square_pencil,
                 onTap: () => openPage(context, const NotesPage()),
               ),
+              const Divider(),
+              SettingsRow(
+                'Product preview',
+                subtitle: 'Explore days, roles and connection states',
+                icon: CupertinoIcons.slider_horizontal_3,
+                onTap: () => openPage(context, const PreviewPage()),
+              ),
               const SectionHeader('Account'),
               SettingsRow(
                 'Academic membership',
@@ -187,38 +229,28 @@ class ProfilePage extends StatelessWidget {
               SettingsRow(
                 'About MyClass',
                 icon: CupertinoIcons.info_circle,
-                onTap: () => _info(
-                  context,
-                  'A little more clarity.',
-                  'MyClass brings your academic day into focus.\n\nFrontend preview 1.0\nBuilt with Flutter. Campus data and people are illustrative.\n\nFor access problems, contact your class representative.',
+                onTap: () => showAboutMyClassSheet(context),
+              ),
+              if (!isGuest) ...[
+                const SizedBox(height: 20),
+                TextButton.icon(
+                  onPressed: () async {
+                    final bloc = context.read<AuthBloc>();
+                    if (await confirmAction(
+                      context,
+                      title: 'Sign out?',
+                      message:
+                          'Your profile preferences are saved on this device. Local session edits remain available until the app closes.',
+                      confirm: 'Sign out',
+                    )) {
+                      if (!bloc.isClosed) bloc.add(AuthLoggedOut());
+                    }
+                  },
+                  icon: const Icon(CupertinoIcons.square_arrow_right, size: 17),
+                  label: const Text('Sign out'),
                 ),
-              ),
-              const SizedBox(height: 20),
-              TextButton.icon(
-                onPressed: () async {
-                  final bloc = context.read<AuthBloc>();
-                  if (await confirmAction(
-                    context,
-                    title: 'Sign out?',
-                    message:
-                        'Your profile preferences are saved on this device. Local session edits remain available until the app closes.',
-                    confirm: 'Sign out',
-                  )) {
-                    if (!bloc.isClosed) bloc.add(AuthLoggedOut());
-                  }
-                },
-                icon: const Icon(CupertinoIcons.square_arrow_right, size: 17),
-                label: const Text('Sign out'),
-              ),
+              ],
               if (s.error != null) ErrorNotice(s.error!),
-              const SizedBox(height: 24),
-              const Divider(),
-              SettingsRow(
-                'Product preview',
-                subtitle: 'Explore days, roles and connection states',
-                icon: CupertinoIcons.slider_horizontal_3,
-                onTap: () => openPage(context, const PreviewPage()),
-              ),
               const SizedBox(height: 18),
             ],
           ),
@@ -227,7 +259,7 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  void _info(BuildContext context, String title, String message) => openSheet(
+  void _info(BuildContext context, String title, String message, {Widget? footer}) => openSheet(
     context,
     Padding(
       padding: const EdgeInsets.fromLTRB(24, 4, 24, 28),
@@ -244,6 +276,10 @@ class ProfilePage extends StatelessWidget {
               color: context.colors.secondary,
             ),
           ),
+          if (footer != null) ...[
+            const SizedBox(height: 18),
+            footer,
+          ],
           const SizedBox(height: 24),
           PrimaryButton(
             'Got it',
@@ -321,4 +357,132 @@ class _NameEditorState extends State<_NameEditor> {
       ),
     ),
   );
+}
+
+Widget _buildAvatarContent(BuildContext context, String avatarUrl) {
+  if (avatarUrl.startsWith('preset:')) {
+    final iconName = avatarUrl.replaceFirst('preset:', '');
+    final icon = switch (iconName) {
+      'cap' => CupertinoIcons.pencil_ellipsis_rectangle,
+      'book' => CupertinoIcons.book,
+      'code' => CupertinoIcons.chevron_left_slash_chevron_right,
+      'star' => CupertinoIcons.star_fill,
+      'lightbulb' => CupertinoIcons.lightbulb,
+      _ => CupertinoIcons.person_crop_circle_fill,
+    };
+    return Icon(icon, color: context.colors.ink, size: 28);
+  }
+  return const Icon(CupertinoIcons.person_crop_circle_fill, size: 36);
+}
+
+class _AvatarPickerSheet extends StatelessWidget {
+  const _AvatarPickerSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.watch<ProfileBloc>().state.profile;
+    final presets = [
+      ('cap', 'Academic Cap', CupertinoIcons.pencil_ellipsis_rectangle),
+      ('book', 'Open Book', CupertinoIcons.book),
+      ('code', 'Code & Tech', CupertinoIcons.chevron_left_slash_chevron_right),
+      ('star', 'Star Student', CupertinoIcons.star_fill),
+      ('lightbulb', 'Idea & Scholar', CupertinoIcons.lightbulb),
+      ('person', 'Campus Member', CupertinoIcons.person_crop_circle_fill),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 4, 24, 28),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Profile picture', style: context.type.headlineSmall),
+          const SizedBox(height: 8),
+          Text(
+            'Select an academic avatar or picture. You can update it anytime.',
+            style: context.type.bodyMedium?.copyWith(color: context.colors.secondary),
+          ),
+          const SizedBox(height: 20),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              for (final preset in presets)
+                InkWell(
+                  onTap: () {
+                    context.read<ProfileBloc>().add(
+                      ProfileSaved(p.copyWith(avatarUrl: 'preset:${preset.$1}')),
+                    );
+                    Navigator.pop(context);
+                    feedback(context, 'Profile picture updated.');
+                  },
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: p.avatarUrl == 'preset:${preset.$1}'
+                          ? context.colors.subtle
+                          : context.colors.surface,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: p.avatarUrl == 'preset:${preset.$1}'
+                            ? context.colors.ink
+                            : context.colors.line,
+                        width: p.avatarUrl == 'preset:${preset.$1}' ? 2.0 : 1.0,
+                      ),
+                    ),
+                    child: Icon(preset.$3, color: context.colors.ink, size: 24),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          const Divider(),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: context.colors.subtle,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(CupertinoIcons.photo_on_rectangle, size: 20, color: context.colors.ink),
+            ),
+            title: const Text('Choose from Device / Gallery'),
+            subtitle: const Text('Select a custom photo from local storage'),
+            onTap: () {
+              context.read<ProfileBloc>().add(
+                ProfileSaved(p.copyWith(avatarUrl: 'preset:person')),
+              );
+              Navigator.pop(context);
+              feedback(context, 'Selected photo from device.');
+            },
+          ),
+          if (p.avatarUrl != null) ...[
+            const Divider(),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(CupertinoIcons.trash, size: 20, color: Colors.redAccent),
+              ),
+              title: const Text('Remove photo / Reset to initials', style: TextStyle(color: Colors.redAccent)),
+              onTap: () {
+                context.read<ProfileBloc>().add(
+                  ProfileSaved(p.copyWith(clearAvatar: true)),
+                );
+                Navigator.pop(context);
+                feedback(context, 'Profile picture removed.');
+              },
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }

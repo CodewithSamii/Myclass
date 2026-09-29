@@ -57,6 +57,16 @@ class FacultyQueryChanged extends CampusEvent {
   final String query;
 }
 
+class FacultyMemberAdded extends CampusEvent {
+  FacultyMemberAdded(this.member);
+  final FacultyMember member;
+}
+
+class FacultyMembersAdded extends CampusEvent {
+  FacultyMembersAdded(this.members);
+  final List<FacultyMember> members;
+}
+
 class CampusBloc extends Bloc<CampusEvent, CampusState> {
   CampusBloc(this.buses, this.faculty, {String? department})
     : super(CampusState(department: department)) {
@@ -86,6 +96,15 @@ class CampusBloc extends Bloc<CampusEvent, CampusState> {
       ),
     );
     on<FacultyQueryChanged>((e, emit) => emit(state.copyWith(query: e.query)));
+    on<FacultyMemberAdded>((e, emit) {
+      final updated = List<FacultyMember>.from(state.faculty)..add(e.member);
+      emit(state.copyWith(faculty: updated));
+    });
+    on<FacultyMembersAdded>((e, emit) {
+      final existingNames = state.faculty.map((f) => f.name.toLowerCase().trim()).toSet();
+      final toAdd = e.members.where((m) => !existingNames.contains(m.name.toLowerCase().trim())).toList();
+      emit(state.copyWith(faculty: [...state.faculty, ...toAdd]));
+    });
     add(CampusStarted());
   }
   final BusRepository buses;

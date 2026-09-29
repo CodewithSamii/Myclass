@@ -56,6 +56,76 @@ class FacultyPage extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              FilledButton.tonalIcon(
+                onPressed: () => openSheet(context, const _AddFacultySheet()),
+                icon: const Icon(CupertinoIcons.plus, size: 14),
+                label: const Text('Add Faculty', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  minimumSize: const Size(0, 36),
+                ),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
+                onPressed: () {
+                  final schedule = context.read<ScheduleBloc>().state;
+                  final courses = schedule.courses;
+                  final sessions = schedule.sessions;
+                  final routineFaculty = <FacultyMember>[];
+
+                  for (final c in courses) {
+                    if (c.facultyId.isNotEmpty) {
+                      final existing = s.faculty.any((f) => f.name.toLowerCase() == c.compactName.toLowerCase() || f.id == c.facultyId);
+                      if (!existing) {
+                        routineFaculty.add(FacultyMember(
+                          id: c.facultyId,
+                          name: c.compactName,
+                          designation: 'Course Instructor',
+                          departmentId: c.departmentId,
+                          email: '${c.facultyId}@example.edu',
+                          office: 'Department Office',
+                        ));
+                      }
+                    }
+                  }
+
+                  for (final sess in sessions) {
+                    if (sess.facultyName != null && sess.facultyName!.trim().isNotEmpty) {
+                      final name = sess.facultyName!.trim();
+                      final existing = s.faculty.any((f) => f.name.toLowerCase() == name.toLowerCase()) ||
+                          routineFaculty.any((f) => f.name.toLowerCase() == name.toLowerCase());
+                      if (!existing) {
+                        routineFaculty.add(FacultyMember(
+                          id: 'rf-${name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '')}',
+                          name: name,
+                          designation: 'Faculty Instructor',
+                          departmentId: 'cse',
+                          email: '${name.toLowerCase().replaceAll(' ', '.')}@example.edu',
+                          office: 'Faculty Room',
+                        ));
+                      }
+                    }
+                  }
+
+                  if (routineFaculty.isNotEmpty) {
+                    context.read<CampusBloc>().add(FacultyMembersAdded(routineFaculty));
+                    feedback(context, 'Added ${routineFaculty.length} faculty from your routine.');
+                  } else {
+                    feedback(context, 'All routine faculty are already in your directory.');
+                  }
+                },
+                icon: const Icon(CupertinoIcons.square_grid_2x2, size: 14),
+                label: const Text('Add All / Routine', style: TextStyle(fontSize: 12)),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  minimumSize: const Size(0, 36),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 24),
           if (s.visibleFaculty.isEmpty)
             const EmptyState(
@@ -236,6 +306,135 @@ class FacultyProfilePage extends StatelessWidget {
             style: context.type.bodySmall?.copyWith(
               color: context.colors.faint,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AddFacultySheet extends StatefulWidget {
+  const _AddFacultySheet();
+  @override
+  State<_AddFacultySheet> createState() => _AddFacultySheetState();
+}
+
+class _AddFacultySheetState extends State<_AddFacultySheet> {
+  final _nameController = TextEditingController();
+  final _designationController = TextEditingController(text: 'Lecturer');
+  final _emailController = TextEditingController();
+  final _officeController = TextEditingController(text: 'Faculty Room');
+  String _department = 'cse';
+  String? _error;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _designationController.dispose();
+    _emailController.dispose();
+    _officeController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      setState(() => _error = 'Please enter faculty name.');
+      return;
+    }
+    final desig = _designationController.text.trim().isEmpty
+        ? 'Lecturer'
+        : _designationController.text.trim();
+    final email = _emailController.text.trim().isEmpty
+        ? '${name.toLowerCase().replaceAll(' ', '.')}@example.edu'
+        : _emailController.text.trim();
+    final office = _officeController.text.trim().isEmpty
+        ? 'Faculty Room'
+        : _officeController.text.trim();
+
+    final newMember = FacultyMember(
+      id: 'f-${DateTime.now().millisecondsSinceEpoch}',
+      name: name,
+      designation: desig,
+      departmentId: _department,
+      email: email,
+      office: office,
+    );
+
+    context.read<CampusBloc>().add(FacultyMemberAdded(newMember));
+    Navigator.of(context).pop();
+    feedback(context, '$name added to Faculty Directory.');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        24,
+        4,
+        24,
+        MediaQuery.viewInsetsOf(context).bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Add Faculty Member', style: context.type.headlineSmall),
+          const SizedBox(height: 8),
+          Text(
+            'Add faculty information relevant to your courses or routine.',
+            style: context.type.bodyMedium?.copyWith(color: context.colors.secondary),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            ErrorNotice(_error!),
+          ],
+          const SizedBox(height: 18),
+          TextField(
+            controller: _nameController,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(
+              labelText: 'Faculty Name *',
+              hintText: 'e.g. A Islam',
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _designationController,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(
+              labelText: 'Designation',
+              hintText: 'e.g. Assistant Professor',
+            ),
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            value: _department,
+            decoration: const InputDecoration(labelText: 'Department'),
+            items: const [
+              DropdownMenuItem(value: 'cse', child: Text('Computer Science & Engineering')),
+              DropdownMenuItem(value: 'bba', child: Text('Business Administration')),
+              DropdownMenuItem(value: 'law', child: Text('Law & Justice')),
+              DropdownMenuItem(value: 'eng', child: Text('English')),
+            ],
+            onChanged: (v) {
+              if (v != null) setState(() => _department = v);
+            },
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(
+              labelText: 'Email address (optional)',
+              hintText: 'name@example.edu',
+            ),
+          ),
+          const SizedBox(height: 20),
+          PrimaryButton(
+            'Add to Directory',
+            icon: CupertinoIcons.checkmark,
+            onPressed: _submit,
           ),
         ],
       ),
