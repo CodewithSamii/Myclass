@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/models.dart';
 import '../../schedule/repositories/schedule_repository.dart';
+import '../../../demo/fixtures.dart';
 
 class FirestoreScheduleRepository implements ScheduleRepository {
   FirestoreScheduleRepository({FirebaseFirestore? firestore})
@@ -38,11 +39,30 @@ class FirestoreScheduleRepository implements ScheduleRepository {
   Stream<Feed<ClassSession>> watchRoutine(String sectionId) {
     return _routineCol(sectionId).snapshots().map((snap) {
       if (snap.docs.isEmpty) {
+        // Return Batch 64 Section I real routine and seed into Firestore
+        if (sectionId == 'bsc-cse-64-I') {
+          final defaultSessions = Fixtures.routine(sectionId);
+          _seedRoutineIfNeeded(sectionId, defaultSessions);
+          return Feed(defaultSessions, updatedAt: DateTime.now());
+        }
         return Feed(const <ClassSession>[], updatedAt: DateTime.now());
       }
       final items = snap.docs.map((d) => ClassSession.fromJson(d.data())).toList();
       return Feed(items, updatedAt: DateTime.now());
     });
+  }
+
+  Future<void> _seedRoutineIfNeeded(String sectionId, List<ClassSession> sessions) async {
+    try {
+      final snap = await _routineCol(sectionId).limit(1).get();
+      if (snap.docs.isEmpty && sessions.isNotEmpty) {
+        final batch = _firestore.batch();
+        for (final s in sessions) {
+          batch.set(_routineCol(sectionId).doc(s.id), s.toJson());
+        }
+        await batch.commit();
+      }
+    } catch (_) {}
   }
 
   @override
@@ -52,10 +72,28 @@ class FirestoreScheduleRepository implements ScheduleRepository {
       if (snap.docs.isNotEmpty) {
         return snap.docs.map((d) => Course.fromJson(d.data())).toList();
       }
+      if (sectionId == 'bsc-cse-64-I') {
+        final defaultCourses = Fixtures.coursesFor(sectionId);
+        _seedCourses(sectionId, defaultCourses);
+        return defaultCourses;
+      }
       return const <Course>[];
     } catch (_) {
+      if (sectionId == 'bsc-cse-64-I') {
+        return Fixtures.coursesFor(sectionId);
+      }
       return const <Course>[];
     }
+  }
+
+  Future<void> _seedCourses(String sectionId, List<Course> coursesList) async {
+    try {
+      final batch = _firestore.batch();
+      for (final c in coursesList) {
+        batch.set(_coursesCol(sectionId).doc(c.id), c.toJson());
+      }
+      await batch.commit();
+    } catch (_) {}
   }
 
   @override
@@ -128,7 +166,7 @@ class FirestoreScheduleRepository implements ScheduleRepository {
     if (notifyStudents) {
       final courseName = session.customCourseName?.isNotEmpty == true
           ? session.customCourseName!
-          : (session.courseId.isNotEmpty ? session.courseId : 'Class');
+          : (Fixtures.courses.where((c) => c.id == session.courseId).firstOrNull?.compactName ?? (session.courseId.isNotEmpty ? session.courseId : 'Class'));
       final updateItem = UpdateFeedItem(
         id: 'upd_cancel_${DateTime.now().millisecondsSinceEpoch}',
         eventId: '',
@@ -184,7 +222,7 @@ class FirestoreScheduleRepository implements ScheduleRepository {
     if (notifyStudents) {
       final courseName = session.customCourseName?.isNotEmpty == true
           ? session.customCourseName!
-          : (session.courseId.isNotEmpty ? session.courseId : 'Class');
+          : (Fixtures.courses.where((c) => c.id == session.courseId).firstOrNull?.compactName ?? (session.courseId.isNotEmpty ? session.courseId : 'Class'));
       final updateItem = UpdateFeedItem(
         id: 'upd_shift_${DateTime.now().millisecondsSinceEpoch}',
         eventId: '',
@@ -203,7 +241,7 @@ class FirestoreScheduleRepository implements ScheduleRepository {
 
     final courseName = session.customCourseName?.isNotEmpty == true
         ? session.customCourseName!
-        : (session.courseId.isNotEmpty ? session.courseId : 'Temporary Class');
+        : (Fixtures.courses.where((c) => c.id == session.courseId).firstOrNull?.compactName ?? (session.courseId.isNotEmpty ? session.courseId : 'Temporary Class'));
     final dateStr = session.specificDate != null ? '${session.specificDate!.day}/${session.specificDate!.month}' : 'Scheduled Date';
     final updateItem = UpdateFeedItem(
       id: 'upd_temp_${DateTime.now().millisecondsSinceEpoch}',
