@@ -135,6 +135,10 @@ class MockNotificationService implements NotificationService {
   @override
   Future<String?> getToken() async => 'mock-fcm-token';
 
+  void simulateNotificationTap(Map<String, dynamic> data) {
+    _tapController.add(data);
+  }
+
   void dispose() {
     _controller.close();
     _tapController.close();
