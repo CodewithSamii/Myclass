@@ -21,6 +21,9 @@ class FirestoreScheduleRepository implements ScheduleRepository {
   CollectionReference<Map<String, dynamic>> _slotsCol(String sectionId) =>
       _sectionDoc(sectionId).collection('time_slots');
 
+  CollectionReference<Map<String, dynamic>> _updatesCol(String sectionId) =>
+      _sectionDoc(sectionId).collection('updates');
+
   @override
   Stream<Feed<ClassSession>> watchRoutine(String sectionId) {
     return _routineCol(sectionId).snapshots().map((snap) {
@@ -158,6 +161,25 @@ class FirestoreScheduleRepository implements ScheduleRepository {
       await _routineCol(sectionId).doc(cancelledId).delete();
       await sessionRef.update({'cancelled': false});
     }
+
+    if (notifyStudents) {
+      final courseName = session.customCourseName?.isNotEmpty == true
+          ? session.customCourseName!
+          : (Fixtures.courses.where((c) => c.id == session.courseId).firstOrNull?.compactName ?? 'Class');
+      final updateItem = UpdateFeedItem(
+        id: 'upd_cancel_${DateTime.now().millisecondsSinceEpoch}',
+        eventId: '',
+        sessionId: session.id,
+        title: cancel
+            ? '$courseName cancelled on ${date.day}/${date.month}'
+            : '$courseName restored on ${date.day}/${date.month}',
+        detail: cancel
+            ? 'Scheduled class at ${TimeSlot.formatMin(session.startMinute)} has been marked as cancelled.'
+            : 'Class will take place as scheduled at ${TimeSlot.formatMin(session.startMinute)}.',
+        at: DateTime.now(),
+      );
+      await _updatesCol(sectionId).doc(updateItem.id).set(updateItem.toJson());
+    }
   }
 
   @override
@@ -195,16 +217,55 @@ class FirestoreScheduleRepository implements ScheduleRepository {
       originalTimeLabel: origTimeStr,
     );
     await _routineCol(sectionId).doc(targetShiftedInstance.id).set(targetShiftedInstance.toJson());
+
+    if (notifyStudents) {
+      final courseName = session.customCourseName?.isNotEmpty == true
+          ? session.customCourseName!
+          : (Fixtures.courses.where((c) => c.id == session.courseId).firstOrNull?.compactName ?? 'Class');
+      final updateItem = UpdateFeedItem(
+        id: 'upd_shift_${DateTime.now().millisecondsSinceEpoch}',
+        eventId: '',
+        sessionId: session.id,
+        title: '$courseName shifted to ${targetDate.day}/${targetDate.month}',
+        detail: 'Moved from ${sourceDate.day}/${sourceDate.month} (${TimeSlot.formatMin(session.startMinute)}) to ${targetDate.day}/${targetDate.month} ($origTimeStr).',
+        at: DateTime.now(),
+      );
+      await _updatesCol(sectionId).doc(updateItem.id).set(updateItem.toJson());
+    }
   }
 
   @override
   Future<void> saveTemporaryClass(ClassSession session) async {
     await _routineCol(session.sectionId).doc(session.id).set(session.toJson());
+
+    final courseName = session.customCourseName?.isNotEmpty == true
+        ? session.customCourseName!
+        : (Fixtures.courses.where((c) => c.id == session.courseId).firstOrNull?.compactName ?? 'Temporary Class');
+    final dateStr = session.specificDate != null ? '${session.specificDate!.day}/${session.specificDate!.month}' : 'Scheduled Date';
+    final updateItem = UpdateFeedItem(
+      id: 'upd_temp_${DateTime.now().millisecondsSinceEpoch}',
+      eventId: '',
+      sessionId: session.id,
+      title: 'Temporary Class: $courseName on $dateStr',
+      detail: '${session.isOnline ? "Online class" : "Room ${session.room ?? "TBA"}"} · ${TimeSlot.formatMin(session.startMinute)}–${TimeSlot.formatMin(session.endMinute)}',
+      at: DateTime.now(),
+    );
+    await _updatesCol(session.sectionId).doc(updateItem.id).set(updateItem.toJson());
   }
 
   @override
   Future<void> deleteTemporaryClass(String sectionId, String sessionId) async {
     await _routineCol(sectionId).doc(sessionId).delete();
+
+    final updateItem = UpdateFeedItem(
+      id: 'upd_temp_del_${DateTime.now().millisecondsSinceEpoch}',
+      eventId: '',
+      sessionId: sessionId,
+      title: 'Temporary Class removed',
+      detail: 'The temporary class has been removed by class representative.',
+      at: DateTime.now(),
+    );
+    await _updatesCol(sectionId).doc(updateItem.id).set(updateItem.toJson());
   }
 
   @override

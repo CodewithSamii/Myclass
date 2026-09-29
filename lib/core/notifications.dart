@@ -15,6 +15,7 @@ abstract interface class NotificationService {
   Future<void> unsubscribeFromSection(String sectionId);
   Future<String?> getToken();
   Stream<RemoteMessage> get onMessage;
+  Stream<Map<String, dynamic>> get onNotificationTapped;
 }
 
 class FirebaseNotificationService implements NotificationService {
@@ -24,9 +25,14 @@ class FirebaseNotificationService implements NotificationService {
   final FirebaseMessaging _messaging;
   final StreamController<RemoteMessage> _messageStreamController =
       StreamController<RemoteMessage>.broadcast();
+  final StreamController<Map<String, dynamic>> _tapStreamController =
+      StreamController<Map<String, dynamic>>.broadcast();
 
   @override
   Stream<RemoteMessage> get onMessage => _messageStreamController.stream;
+
+  @override
+  Stream<Map<String, dynamic>> get onNotificationTapped => _tapStreamController.stream;
 
   @override
   Future<void> initialize() async {
@@ -49,11 +55,13 @@ class FirebaseNotificationService implements NotificationService {
 
       FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
         debugPrint('Notification clicked while in background: ${message.data}');
+        _tapStreamController.add(message.data);
       });
 
       final initialMessage = await _messaging.getInitialMessage();
       if (initialMessage != null) {
         debugPrint('App launched from terminated state via notification: ${initialMessage.data}');
+        _tapStreamController.add(initialMessage.data);
       }
     } catch (e) {
       debugPrint('NotificationService initialization failed: $e');
@@ -99,15 +107,21 @@ class FirebaseNotificationService implements NotificationService {
 
   void dispose() {
     _messageStreamController.close();
+    _tapStreamController.close();
   }
 }
 
 class MockNotificationService implements NotificationService {
   final StreamController<RemoteMessage> _controller =
       StreamController<RemoteMessage>.broadcast();
+  final StreamController<Map<String, dynamic>> _tapController =
+      StreamController<Map<String, dynamic>>.broadcast();
 
   @override
   Stream<RemoteMessage> get onMessage => _controller.stream;
+
+  @override
+  Stream<Map<String, dynamic>> get onNotificationTapped => _tapController.stream;
 
   @override
   Future<void> initialize() async {}
@@ -123,5 +137,6 @@ class MockNotificationService implements NotificationService {
 
   void dispose() {
     _controller.close();
+    _tapController.close();
   }
 }

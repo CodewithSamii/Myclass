@@ -1,0 +1,13 @@
+{
+  "name": "myclass-notification-dispatcher",
+  "version": "1.0.0",
+  "description": "Standalone real-time notification dispatcher for MyClass (works on Free Spark plan)",
+  "type": "module",
+  "main": "dispatcher.mjs",
+  "scripts": {
+    "start": "node dispatcher.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0"
+  }
+}
