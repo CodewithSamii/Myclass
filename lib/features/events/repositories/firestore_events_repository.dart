@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/models.dart';
 import '../../events/repositories/events_repository.dart';
-import '../../../demo/fixtures.dart';
 
 class FirestoreEventRepository implements EventRepository {
   FirestoreEventRepository({FirebaseFirestore? firestore})
@@ -22,26 +21,11 @@ class FirestoreEventRepository implements EventRepository {
   Stream<Feed<AcademicEvent>> watchEvents(String sectionId) {
     return _eventsCol(sectionId).snapshots().map((snap) {
       if (snap.docs.isEmpty) {
-        final defaultEvents = Fixtures.events(sectionId);
-        _seedEventsIfNeeded(sectionId, defaultEvents);
-        return Feed(defaultEvents, updatedAt: DateTime.now());
+        return Feed(const <AcademicEvent>[], updatedAt: DateTime.now());
       }
       final items = snap.docs.map((d) => AcademicEvent.fromJson(d.data())).toList();
       return Feed(items, updatedAt: DateTime.now());
     });
-  }
-
-  Future<void> _seedEventsIfNeeded(String sectionId, List<AcademicEvent> eventsList) async {
-    try {
-      final snap = await _eventsCol(sectionId).limit(1).get();
-      if (snap.docs.isEmpty && eventsList.isNotEmpty) {
-        final batch = _firestore.batch();
-        for (final e in eventsList) {
-          batch.set(_eventsCol(sectionId).doc(e.id), e.toJson());
-        }
-        await batch.commit();
-      }
-    } catch (_) {}
   }
 
   @override
@@ -51,29 +35,7 @@ class FirestoreEventRepository implements EventRepository {
         .snapshots()
         .map((snap) {
       if (snap.docs.isEmpty) {
-        return [
-          UpdateFeedItem(
-            id: 'u1',
-            eventId: '$sectionId-network-viva',
-            title: 'Networking viva moved',
-            detail: 'Room 401 → Room 602',
-            at: DateTime(2026, 9, 21, 10, 40),
-          ),
-          UpdateFeedItem(
-            id: 'u2',
-            eventId: '$sectionId-postponed',
-            title: 'Compiler viva postponed',
-            detail: 'Sep 23 → Sep 28 · 11:00 AM',
-            at: DateTime(2026, 9, 20, 16),
-          ),
-          UpdateFeedItem(
-            id: 'u3',
-            eventId: '$sectionId-late',
-            title: 'Project logbook review added',
-            detail: 'Today · 4:00 PM',
-            at: DateTime(2026, 9, 21, 9),
-          ),
-        ];
+        return const <UpdateFeedItem>[];
       }
       return snap.docs.map((d) => UpdateFeedItem.fromJson(d.data())).toList();
     });

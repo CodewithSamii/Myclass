@@ -1,13 +1,23 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/models.dart';
 import '../../schedule/repositories/schedule_repository.dart';
-import '../../../demo/fixtures.dart';
 
 class FirestoreScheduleRepository implements ScheduleRepository {
   FirestoreScheduleRepository({FirebaseFirestore? firestore})
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
   final FirebaseFirestore _firestore;
+
+  static const _defaultSlots = [
+    TimeSlot(id: 'ts1', label: '9:00–10:05', startMinute: 540, endMinute: 605, orderIndex: 0),
+    TimeSlot(id: 'ts2', label: '10:05–11:10', startMinute: 605, endMinute: 670, orderIndex: 1),
+    TimeSlot(id: 'ts3', label: '11:10–12:15', startMinute: 670, endMinute: 735, orderIndex: 2),
+    TimeSlot(id: 'ts4', label: '12:15–1:20', startMinute: 735, endMinute: 800, orderIndex: 3),
+    TimeSlot(id: 'ts5', label: '1:20–1:50', startMinute: 800, endMinute: 830, orderIndex: 4),
+    TimeSlot(id: 'ts6', label: '1:50–2:55', startMinute: 830, endMinute: 895, orderIndex: 5),
+    TimeSlot(id: 'ts7', label: '2:55–4:00', startMinute: 895, endMinute: 960, orderIndex: 6),
+    TimeSlot(id: 'ts8', label: '4:00–5:05', startMinute: 960, endMinute: 1025, orderIndex: 7),
+  ];
 
   DocumentReference<Map<String, dynamic>> _sectionDoc(String sectionId) =>
       _firestore.collection('sections').doc(sectionId);
@@ -28,27 +38,11 @@ class FirestoreScheduleRepository implements ScheduleRepository {
   Stream<Feed<ClassSession>> watchRoutine(String sectionId) {
     return _routineCol(sectionId).snapshots().map((snap) {
       if (snap.docs.isEmpty) {
-        // Return default fixture routine and optionally seed in background
-        final defaultSessions = Fixtures.routine(sectionId);
-        _seedRoutineIfNeeded(sectionId, defaultSessions);
-        return Feed(defaultSessions, updatedAt: DateTime.now());
+        return Feed(const <ClassSession>[], updatedAt: DateTime.now());
       }
       final items = snap.docs.map((d) => ClassSession.fromJson(d.data())).toList();
       return Feed(items, updatedAt: DateTime.now());
     });
-  }
-
-  Future<void> _seedRoutineIfNeeded(String sectionId, List<ClassSession> sessions) async {
-    try {
-      final snap = await _routineCol(sectionId).limit(1).get();
-      if (snap.docs.isEmpty && sessions.isNotEmpty) {
-        final batch = _firestore.batch();
-        for (final s in sessions) {
-          batch.set(_routineCol(sectionId).doc(s.id), s.toJson());
-        }
-        await batch.commit();
-      }
-    } catch (_) {}
   }
 
   @override
@@ -58,23 +52,10 @@ class FirestoreScheduleRepository implements ScheduleRepository {
       if (snap.docs.isNotEmpty) {
         return snap.docs.map((d) => Course.fromJson(d.data())).toList();
       }
-      // Seed default courses
-      final defaultCourses = Fixtures.coursesFor(sectionId);
-      _seedCourses(sectionId, defaultCourses);
-      return defaultCourses;
+      return const <Course>[];
     } catch (_) {
-      return Fixtures.coursesFor(sectionId);
+      return const <Course>[];
     }
-  }
-
-  Future<void> _seedCourses(String sectionId, List<Course> coursesList) async {
-    try {
-      final batch = _firestore.batch();
-      for (final c in coursesList) {
-        batch.set(_coursesCol(sectionId).doc(c.id), c.toJson());
-      }
-      await batch.commit();
-    } catch (_) {}
   }
 
   @override
@@ -85,25 +66,7 @@ class FirestoreScheduleRepository implements ScheduleRepository {
         return snap.docs.map((d) => AcademicPeriod.fromJson(d.data())).toList();
       }
     } catch (_) {}
-    return [
-      AcademicPeriod(
-        title: "Midterm assessment period",
-        start: DateTime(2026, 9, 24),
-        end: DateTime(2026, 10, 1),
-      ),
-      AcademicPeriod(
-        title: "Exam day · Regular classes suspended",
-        start: DateTime(2026, 9, 24),
-        end: DateTime(2026, 9, 24),
-        classesSuspended: true,
-      ),
-      AcademicPeriod(
-        title: "Semester break",
-        start: DateTime(2026, 10, 17),
-        end: DateTime(2026, 11, 1),
-        classesSuspended: true,
-      ),
-    ];
+    return const <AcademicPeriod>[];
   }
 
   @override
@@ -114,7 +77,7 @@ class FirestoreScheduleRepository implements ScheduleRepository {
         return snap.docs.map((d) => TimeSlot.fromJson(d.data())).toList();
       }
     } catch (_) {}
-    return Fixtures.defaultTimeSlots;
+    return _defaultSlots;
   }
 
   @override
@@ -165,7 +128,7 @@ class FirestoreScheduleRepository implements ScheduleRepository {
     if (notifyStudents) {
       final courseName = session.customCourseName?.isNotEmpty == true
           ? session.customCourseName!
-          : (Fixtures.courses.where((c) => c.id == session.courseId).firstOrNull?.compactName ?? 'Class');
+          : (session.courseId.isNotEmpty ? session.courseId : 'Class');
       final updateItem = UpdateFeedItem(
         id: 'upd_cancel_${DateTime.now().millisecondsSinceEpoch}',
         eventId: '',
@@ -221,7 +184,7 @@ class FirestoreScheduleRepository implements ScheduleRepository {
     if (notifyStudents) {
       final courseName = session.customCourseName?.isNotEmpty == true
           ? session.customCourseName!
-          : (Fixtures.courses.where((c) => c.id == session.courseId).firstOrNull?.compactName ?? 'Class');
+          : (session.courseId.isNotEmpty ? session.courseId : 'Class');
       final updateItem = UpdateFeedItem(
         id: 'upd_shift_${DateTime.now().millisecondsSinceEpoch}',
         eventId: '',
@@ -240,7 +203,7 @@ class FirestoreScheduleRepository implements ScheduleRepository {
 
     final courseName = session.customCourseName?.isNotEmpty == true
         ? session.customCourseName!
-        : (Fixtures.courses.where((c) => c.id == session.courseId).firstOrNull?.compactName ?? 'Temporary Class');
+        : (session.courseId.isNotEmpty ? session.courseId : 'Temporary Class');
     final dateStr = session.specificDate != null ? '${session.specificDate!.day}/${session.specificDate!.month}' : 'Scheduled Date';
     final updateItem = UpdateFeedItem(
       id: 'upd_temp_${DateTime.now().millisecondsSinceEpoch}',

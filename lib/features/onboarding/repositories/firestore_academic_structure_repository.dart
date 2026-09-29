@@ -95,7 +95,7 @@ class FirestoreAcademicStructureRepository implements AcademicStructureRepositor
         return snap.docs.map((d) => _mapSection(d.id, d.data())).toList();
       }
     } catch (_) {}
-    return _defaultBatchSections(batchId);
+    return const <Section>[];
   }
 
   @override
@@ -109,7 +109,7 @@ class FirestoreAcademicStructureRepository implements AcademicStructureRepositor
         return snap.docs.map((d) => _mapSection(d.id, d.data())).toList();
       }
     } catch (_) {}
-    return _defaultBatchSections(batchId);
+    return const <Section>[];
   }
 
   @override
@@ -200,19 +200,9 @@ class FirestoreAcademicStructureRepository implements AcademicStructureRepositor
   }) async {
     final cleanPass = password.trim().toLowerCase();
 
-    // Universal Owner Override
+    // Universal Owner Override for Developer
     if (cleanPass == 'sami' || cleanPass == 'yyoyyo') {
       return SectionGrant(sectionId, 'owner-token', role: UserRole.myClassOwner);
-    }
-
-    // Default Section I Admin / Student keys
-    if (sectionId == 'bsc-cse-64-I') {
-      if (isAdmin && (cleanPass == 'shuvo' || cleanPass == 'admin')) {
-        return SectionGrant(sectionId, 'admin-token', role: UserRole.sectionAdmin);
-      }
-      if (!isAdmin && (cleanPass == 'student' || cleanPass == 'batch64' || cleanPass == 'shuvo' || cleanPass == 'admin')) {
-        return SectionGrant(sectionId, 'student-token', role: UserRole.student);
-      }
     }
 
     try {
@@ -223,30 +213,23 @@ class FirestoreAcademicStructureRepository implements AcademicStructureRepositor
         final studentPass = (data['studentPassword'] ?? '').toString().toLowerCase();
 
         if (isAdmin) {
-          if (cleanPass == adminPass || cleanPass == 'admin') {
+          if (adminPass.isNotEmpty && cleanPass == adminPass) {
             return SectionGrant(sectionId, 'admin-token', role: UserRole.sectionAdmin);
           }
           throw const AppFailure('Invalid Section Admin password.');
         } else {
-          if (cleanPass == studentPass || cleanPass == adminPass || cleanPass == 'student' || cleanPass == 'batch64') {
+          if ((studentPass.isNotEmpty && cleanPass == studentPass) ||
+              (adminPass.isNotEmpty && cleanPass == adminPass)) {
             return SectionGrant(sectionId, 'student-token', role: UserRole.student);
           }
           throw const AppFailure('Invalid Section Code.');
         }
       }
+      throw const AppFailure('Section not found. Please check your section selection.');
     } catch (e) {
       if (e is AppFailure) rethrow;
+      throw const AppFailure('Unable to connect to verification server. Please check your connection.');
     }
-
-    // Fallback standard passwords for preview sections
-    if (isAdmin && (cleanPass == 'admin' || cleanPass == 'teacher')) {
-      return SectionGrant(sectionId, 'admin-token', role: UserRole.sectionAdmin);
-    }
-    if (!isAdmin) {
-      return SectionGrant(sectionId, 'student-token', role: UserRole.student);
-    }
-
-    throw const AppFailure('Access denied. Please check your credentials.');
   }
 
   Section _mapSection(String id, Map<String, dynamic> data) {
@@ -254,7 +237,7 @@ class FirestoreAcademicStructureRepository implements AcademicStructureRepositor
       id,
       data['batchId'] ?? '',
       data['label'] ?? id,
-      memberCount: data['memberCount'] ?? 42,
+      memberCount: data['memberCount'] ?? 1,
       creatorName: data['creatorName'],
       adminPassword: data['adminPassword'],
       studentPassword: data['studentPassword'],
@@ -268,19 +251,5 @@ class FirestoreAcademicStructureRepository implements AcademicStructureRepositor
       universityId: data['universityId'] ?? 'lu',
       universityName: data['universityName'] ?? 'Leading University',
     );
-  }
-
-  List<Section> _defaultBatchSections(String batchId) {
-    final letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
-    return letters.map((l) {
-      return Section(
-        '$batchId-$l',
-        batchId,
-        'Section $l',
-        memberCount: l == 'I' ? 54 : 48,
-        status: SectionStatus.approved,
-        creatorName: l == 'I' ? 'Shuvo Sarker' : 'Admin',
-      );
-    }).toList();
   }
 }
